@@ -16,7 +16,7 @@ export function BookingDialog({ pro, onClose }: BookingDialogProps) {
 
   useEffect(() => {
     if (pro) {
-      setService(pro.services[0]);
+      setService(pro.services[0] ?? "");
       setDay(DAYS[0]);
       setTime(TIMES[1]);
       setAddress("");
