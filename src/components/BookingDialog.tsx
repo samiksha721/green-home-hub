@@ -34,13 +34,13 @@ export function BookingDialog({ pro, onClose }: BookingDialogProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
-      <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="animate-rise relative w-full max-w-md rounded-3xl border border-ink/5 bg-cream/95 p-5 shadow-2xl backdrop-blur-2xl ring-1 ring-black/5">
+      <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm dark:bg-black/60" onClick={onClose} aria-hidden />
+      <div className="animate-rise relative w-full max-w-md rounded-3xl border border-ink/5 bg-cream/95 p-5 shadow-2xl backdrop-blur-2xl ring-1 ring-ink/5">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">Appointment</p>
           <button
             onClick={onClose}
-            className="grid size-8 place-items-center rounded-full border border-ink/10 bg-white/60 transition hover:border-ink/30"
+            className="grid size-8 place-items-center rounded-full border border-ink/10 bg-surface/60 transition hover:border-ink/30"
             aria-label="Close booking"
           >
             <X className="size-4" />
@@ -92,7 +92,7 @@ export function BookingDialog({ pro, onClose }: BookingDialogProps) {
                       className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                         service === s
                           ? "bg-ink text-cream"
-                          : "border border-ink/10 bg-white/60 text-ink/70 hover:border-ink/30"
+                          : "border border-ink/10 bg-surface/60 text-ink/70 hover:border-ink/30"
                       }`}
                     >
                       {s}
@@ -110,8 +110,8 @@ export function BookingDialog({ pro, onClose }: BookingDialogProps) {
                       onClick={() => setDay(d)}
                       className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                         day === d
-                          ? "bg-sage text-white"
-                          : "border border-ink/10 bg-white/60 text-ink/70 hover:border-ink/30"
+                          ? "bg-sage text-cream"
+                          : "border border-ink/10 bg-surface/60 text-ink/70 hover:border-ink/30"
                       }`}
                     >
                       {d}
@@ -129,8 +129,8 @@ export function BookingDialog({ pro, onClose }: BookingDialogProps) {
                       onClick={() => setTime(t)}
                       className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                         time === t
-                          ? "bg-terra text-white"
-                          : "border border-ink/10 bg-white/60 text-ink/70 hover:border-ink/30"
+                          ? "bg-terra text-cream"
+                          : "border border-ink/10 bg-surface/60 text-ink/70 hover:border-ink/30"
                       }`}
                     >
                       {t}
@@ -146,7 +146,7 @@ export function BookingDialog({ pro, onClose }: BookingDialogProps) {
                   onChange={(e) => setAddress(e.target.value)}
                   maxLength={120}
                   placeholder="14 Hollow Lane, Portland"
-                  className="mt-1.5 w-full rounded-xl border border-ink/10 bg-white/60 px-3 py-2.5 text-sm outline-none transition placeholder:text-ink/35 focus:border-sage focus:ring-2 focus:ring-sage/20"
+                  className="mt-1.5 w-full rounded-xl border border-ink/10 bg-surface/60 px-3 py-2.5 text-sm outline-none transition placeholder:text-ink/35 focus:border-sage focus:ring-2 focus:ring-sage/20"
                 />
               </label>
             </div>
@@ -159,7 +159,7 @@ export function BookingDialog({ pro, onClose }: BookingDialogProps) {
               <button
                 onClick={() => setConfirmed(true)}
                 disabled={!address.trim()}
-                className="rounded-full bg-terra px-5 py-2.5 text-sm font-medium text-white transition hover:bg-terra/90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-full bg-terra px-5 py-2.5 text-sm font-medium text-cream transition hover:bg-terra/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Confirm booking
               </button>

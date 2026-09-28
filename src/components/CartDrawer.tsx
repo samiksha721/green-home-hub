@@ -16,7 +16,7 @@ export function CartDrawer({ open, items, onClose, onUpdateQty, onCheckout }: Ca
   return (
     <>
       <div
-        className={`fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm transition-opacity duration-300 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        className={`fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm dark:bg-black/60 transition-opacity duration-300 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
         onClick={onClose}
         aria-hidden
       />
@@ -30,7 +30,7 @@ export function CartDrawer({ open, items, onClose, onUpdateQty, onCheckout }: Ca
           </h2>
           <button
             onClick={onClose}
-            className="grid size-9 place-items-center rounded-full border border-ink/10 bg-white/60 transition hover:border-ink/30"
+            className="grid size-9 place-items-center rounded-full border border-ink/10 bg-surface/60 transition hover:border-ink/30"
             aria-label="Close bag"
           >
             <X className="size-4" />
@@ -61,7 +61,7 @@ export function CartDrawer({ open, items, onClose, onUpdateQty, onCheckout }: Ca
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-base font-semibold leading-tight">{plant.name}</p>
                     <p className="text-sm text-ink/55">{plant.tagline}</p>
-                    <div className="mt-1.5 inline-flex items-center gap-3 rounded-full border border-ink/10 bg-white/60 px-2 py-0.5">
+                    <div className="mt-1.5 inline-flex items-center gap-3 rounded-full border border-ink/10 bg-surface/60 px-2 py-0.5">
                       <button
                         onClick={() => onUpdateQty(plant.id, -1)}
                         className="px-1 text-ink/60 transition hover:text-terra"
@@ -104,7 +104,7 @@ export function CartDrawer({ open, items, onClose, onUpdateQty, onCheckout }: Ca
             </div>
             <button
               onClick={onCheckout}
-              className="mt-4 w-full rounded-full bg-terra px-5 py-3 text-sm font-medium text-white transition hover:bg-terra/90"
+              className="mt-4 w-full rounded-full bg-terra px-5 py-3 text-sm font-medium text-cream transition hover:bg-terra/90"
             >
               Checkout
             </button>
