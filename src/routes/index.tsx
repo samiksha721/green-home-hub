@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { PLANTS, PROS, type Plant, type PlantCategory, type Pro } from "@/lib/catalog";
 import { CartDrawer } from "@/components/CartDrawer";
 import { BookingDialog } from "@/components/BookingDialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -62,9 +63,9 @@ function Index() {
     <div className="min-h-screen bg-cream font-body text-ink antialiased selection:bg-sage/20">
       <div className="relative overflow-hidden">
         {/* ambient blobs */}
-        <div className="animate-drift pointer-events-none absolute -left-32 -top-40 size-[560px] rounded-full bg-sage/25 blur-3xl" />
-        <div className="animate-drift-reverse pointer-events-none absolute right-[-160px] top-24 size-[520px] rounded-full bg-terra/15 blur-3xl" />
-        <div className="animate-drift-slow pointer-events-none absolute bottom-0 left-1/3 size-[480px] rounded-full bg-sagelight/40 blur-3xl" />
+        <div className="animate-drift pointer-events-none absolute -left-32 -top-40 size-[560px] rounded-full bg-sage/25 blur-3xl dark:opacity-50" />
+        <div className="animate-drift-reverse pointer-events-none absolute right-[-160px] top-24 size-[520px] rounded-full bg-terra/15 blur-3xl dark:opacity-50" />
+        <div className="animate-drift-slow pointer-events-none absolute bottom-0 left-1/3 size-[480px] rounded-full bg-sagelight/40 blur-3xl dark:opacity-50" />
 
         <header className="relative z-20">
           <nav className="border-b border-ink/5 bg-cream/60 backdrop-blur-xl">
@@ -78,10 +79,10 @@ function Index() {
                   greenhouse & grounds
                 </span>
               </div>
-              <div className="hidden items-center gap-1 rounded-full border border-ink/5 bg-white/50 p-1 backdrop-blur-md md:flex">
+              <div className="hidden items-center gap-1 rounded-full border border-ink/5 bg-surface/50 p-1 backdrop-blur-md md:flex">
                 <a
                   href="#shop"
-                  className="rounded-full bg-white/70 px-4 py-1.5 text-sm font-medium text-ink shadow-sm ring-1 ring-black/5"
+                  className="rounded-full bg-surface/70 px-4 py-1.5 text-sm font-medium text-ink shadow-sm ring-1 ring-ink/5"
                 >
                   Shop plants
                 </a>
@@ -93,16 +94,17 @@ function Index() {
                 </a>
               </div>
               <div className="flex items-center gap-2">
+                <ThemeToggle />
                 <button className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block">
                   Sign in
                 </button>
                 <button
                   onClick={() => setCartOpen(true)}
-                  className="relative rounded-full border border-ink/10 bg-white/60 px-4 py-2 text-sm font-medium backdrop-blur-md transition hover:border-ink/20"
+                  className="relative rounded-full border border-ink/10 bg-surface/60 px-4 py-2 text-sm font-medium backdrop-blur-md transition hover:border-ink/20"
                 >
                   Bag
                   {cartCount > 0 && (
-                    <span className="ml-1.5 inline-grid size-5 place-items-center rounded-full bg-terra text-[11px] font-semibold text-white">
+                    <span className="ml-1.5 inline-grid size-5 place-items-center rounded-full bg-terra text-[11px] font-semibold text-cream">
                       {cartCount}
                     </span>
                   )}
@@ -131,7 +133,7 @@ function Index() {
               </a>
               <a
                 href="#services"
-                className="rounded-full border border-ink/15 bg-white/50 px-6 py-3 text-sm font-medium backdrop-blur-md transition hover:border-ink/30"
+                className="rounded-full border border-ink/15 bg-surface/50 px-6 py-3 text-sm font-medium backdrop-blur-md transition hover:border-ink/30"
               >
                 Book an expert
               </a>
@@ -166,7 +168,7 @@ function Index() {
               {visiblePlants.map((plant, i) => (
                 <div
                   key={plant.id}
-                  className="animate-rise group rounded-2xl border border-ink/5 bg-white/55 p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:bg-white/75"
+                  className="animate-rise group rounded-2xl border border-ink/5 bg-surface/55 p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:bg-surface/75"
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <div className="relative overflow-hidden rounded-xl">
@@ -176,9 +178,9 @@ function Index() {
                       loading="lazy"
                       width={1024}
                       height={1024}
-                      className="aspect-square w-full bg-sagelight object-cover outline-1 -outline-offset-1 outline-black/5"
+                      className="aspect-square w-full bg-sagelight object-cover outline-1 -outline-offset-1 outline-ink/5"
                     />
-                    <span className="absolute left-2 top-2 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-medium text-ink/70 backdrop-blur">
+                    <span className="absolute left-2 top-2 rounded-full bg-surface/80 px-2.5 py-1 text-[11px] font-medium text-ink/70 backdrop-blur">
                       {plant.tag}
                     </span>
                   </div>
@@ -188,7 +190,7 @@ function Index() {
                     <span className="font-display text-lg font-semibold">${plant.price}</span>
                     <button
                       onClick={() => addPlant(plant)}
-                      className="rounded-full border border-ink/10 bg-white/60 px-3 py-1.5 text-sm font-medium transition hover:border-terra hover:text-terra"
+                      className="rounded-full border border-ink/10 bg-surface/60 px-3 py-1.5 text-sm font-medium transition hover:border-terra hover:text-terra"
                     >
                       {cart[plant.id] ? `Add (${cart[plant.id]})` : "Add"}
                     </button>
@@ -214,7 +216,7 @@ function Index() {
               {PROS.map((pro, i) => (
                 <div
                   key={pro.id}
-                  className="animate-rise flex flex-col rounded-2xl border border-ink/5 bg-white/55 p-4 backdrop-blur-xl"
+                  className="animate-rise flex flex-col rounded-2xl border border-ink/5 bg-surface/55 p-4 backdrop-blur-xl"
                   style={{ animationDelay: `${(i + 1) * 60}ms` }}
                 >
                   <div className="flex items-center gap-3">
@@ -234,8 +236,8 @@ function Index() {
                   <p className="mt-3 text-sm leading-relaxed text-ink/60">{pro.blurb}</p>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <span className="rounded-full bg-sage/10 px-2.5 py-1 text-xs text-sage">Next: {pro.next}</span>
-                    <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs text-ink/60">${pro.rate}/hr</span>
-                    <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs text-ink/60">
+                    <span className="rounded-full bg-surface/70 px-2.5 py-1 text-xs text-ink/60">${pro.rate}/hr</span>
+                    <span className="rounded-full bg-surface/70 px-2.5 py-1 text-xs text-ink/60">
                       {pro.rating} ({pro.reviews})
                     </span>
                   </div>
@@ -253,8 +255,8 @@ function Index() {
           {/* Booking flow explainer */}
           <section id="booking" className="scroll-mt-6 pt-16">
             <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="relative overflow-hidden rounded-3xl border border-ink/5 bg-white/50 p-6 backdrop-blur-xl">
-                <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-terra/15 blur-3xl" />
+              <div className="relative overflow-hidden rounded-3xl border border-ink/5 bg-surface/50 p-6 backdrop-blur-xl">
+                <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-terra/15 blur-3xl dark:opacity-50" />
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">Booking flow</p>
                 <h2 className="mt-2 max-w-[18ch] text-balance font-display text-3xl font-semibold leading-tight tracking-tight">
                   Pick a time in thirty seconds
@@ -274,7 +276,7 @@ function Index() {
                 </ol>
               </div>
 
-              <div className="rounded-3xl border border-ink/5 bg-white/70 p-5 ring-1 ring-black/5 backdrop-blur-2xl">
+              <div className="rounded-3xl border border-ink/5 bg-surface/70 p-5 ring-1 ring-ink/5 backdrop-blur-2xl">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">Start a booking</p>
                   <span className="rounded-full bg-sage/10 px-2.5 py-1 text-xs font-medium text-sage">
