@@ -22,6 +22,28 @@ export const Route = createFileRoute("/login")({
 });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LAST_EMAIL_KEY = "last-email";
+
+// Why a sign-in or sign-up attempt didn't go through, so we can offer the right next step.
+type Problem = "wrong-password" | "no-account" | "unconfirmed" | "already-registered";
+
+// Error codes only reach the browser when the API version header is readable, so fall back to
+// Supabase's fixed messages.
+function isAuthError(
+  error: { code?: string | undefined; message: string },
+  code: string,
+  message: string,
+) {
+  return error.code === code || error.message === message;
+}
+
+function rememberEmail(email: string) {
+  try {
+    localStorage.setItem(LAST_EMAIL_KEY, email.trim());
+  } catch {
+    // storage unavailable; returning users just retype their email
+  }
+}
 
 function Login() {
   const search = Route.useSearch();
@@ -37,6 +59,7 @@ function Login() {
   const [done, setDone] = useState(false);
   const [authError, setAuthError] = useState("");
   const [notice, setNotice] = useState("");
+  const [problem, setProblem] = useState<Problem | null>(null);
 
   const errors = {
     name: mode === "signup" && !name.trim() ? "Tell us your name" : "",
@@ -49,12 +72,31 @@ function Login() {
   };
   const hasErrors = Object.values(errors).some(Boolean);
 
-  const switchMode = (next: Mode) => {
-    setSubmitted(false);
+  const clearMessages = () => {
     setAuthError("");
     setNotice("");
+    setProblem(null);
+  };
+
+  const switchMode = (next: Mode) => {
+    setSubmitted(false);
+    clearMessages();
     navigate({ search: next === "signup" ? { mode: "signup" } : {}, replace: true });
   };
+
+  // Returning users: prefill the email they last signed in with.
+  useEffect(() => {
+    try {
+      const last = localStorage.getItem(LAST_EMAIL_KEY);
+      if (last) setEmail((current) => current || last);
+      // Nobody has signed in on this device before: start them on registration.
+      else if (!search.mode) navigate({ search: { mode: "signup" }, replace: true });
+    } catch {
+      // storage unavailable
+    }
+    // Only on first load, so switching tabs afterwards isn't overridden.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -63,8 +105,7 @@ function Login() {
   }, [navigate]);
 
   const onForgot = async () => {
-    setAuthError("");
-    setNotice("");
+    clearMessages();
     if (!email.trim() || !EMAIL_RE.test(email)) {
       setAuthError("Enter your email above first, then tap Forgot password.");
       return;
@@ -76,18 +117,65 @@ function Login() {
     else setNotice("If an account exists for that email, a reset link is on its way.");
   };
 
+  const onResendConfirmation = async () => {
+    clearMessages();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) setAuthError(error.message);
+    else setNotice("We've sent a new confirmation link to " + email + ".");
+  };
+
+  const goRegister = () => {
+    setPassword("");
+    switchMode("signup");
+  };
+
+  const tryAnotherEmail = () => {
+    clearMessages();
+    setEmail("");
+    setPassword("");
+    document.getElementById("email")?.focus();
+  };
+
+  const goSignIn = () => {
+    setPassword("");
+    switchMode("signin");
+  };
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    setAuthError("");
-    setNotice("");
+    clearMessages();
     if (hasErrors) return;
     setPending(true);
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (!error) {
+        setPending(false);
+        rememberEmail(email);
+        navigate({ to: "/", search: {} as never });
+        return;
+      }
+      if (isAuthError(error, "email_not_confirmed", "Email not confirmed")) {
+        setPending(false);
+        setProblem("unconfirmed");
+        return;
+      }
+      if (isAuthError(error, "invalid_credentials", "Invalid login credentials")) {
+        // Supabase reports a wrong password and an unknown email the same way; ask which it is.
+        const { data: registered, error: lookupError } = await supabase.rpc("email_registered", {
+          p_email: email,
+        });
+        setPending(false);
+        if (lookupError) return setAuthError("That email or password isn't right.");
+        setProblem(registered ? "wrong-password" : "no-account");
+        return;
+      }
       setPending(false);
-      if (error) return setAuthError(error.message);
-      navigate({ to: "/", search: {} as never });
+      setAuthError(error.message);
     } else {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -95,7 +183,15 @@ function Login() {
         options: { data: { full_name: name }, emailRedirectTo: window.location.origin },
       });
       setPending(false);
-      if (error) return setAuthError(error.message);
+      if (error) {
+        if (isAuthError(error, "user_already_exists", "User already registered")) {
+          return setProblem("already-registered");
+        }
+        return setAuthError(error.message);
+      }
+      // With email confirmation on, Supabase hides existing accounts by returning a user with no identities.
+      if (data.user && data.user.identities?.length === 0) return setProblem("already-registered");
+      rememberEmail(email);
       if (data.session) navigate({ to: "/", search: {} as never });
       else setDone(true);
     }
@@ -284,6 +380,17 @@ function Login() {
                   )}
                 </div>
 
+                {problem && (
+                  <ProblemCallout
+                    problem={problem}
+                    email={email}
+                    onForgot={onForgot}
+                    onRegister={goRegister}
+                    onSignIn={goSignIn}
+                    onTryAnother={tryAnotherEmail}
+                    onResend={onResendConfirmation}
+                  />
+                )}
                 {authError && <p className="text-xs text-terra">{authError}</p>}
                 {notice && <p className="text-xs text-sage">{notice}</p>}
                 <button
@@ -309,6 +416,88 @@ function Login() {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+const PROBLEM_COPY: Record<Problem, { title: string; body: (email: string) => string }> = {
+  "wrong-password": {
+    title: "Forgot your email or password?",
+    body: (email) =>
+      `We found an account for ${email}, but that password is incorrect. Reset it, or sign in with a different email.`,
+  },
+  "no-account": {
+    title: "We don't recognise this email",
+    body: (email) => `There's no Cormorant account for ${email} yet. Register to get started.`,
+  },
+  unconfirmed: {
+    title: "Confirm your email first",
+    body: (email) => `Click the link we sent to ${email} to finish registering, then sign in.`,
+  },
+  "already-registered": {
+    title: "You already have an account",
+    body: (email) => `${email} is already registered. Sign in instead.`,
+  },
+};
+
+function ProblemCallout({
+  problem,
+  email,
+  onForgot,
+  onRegister,
+  onSignIn,
+  onResend,
+  onTryAnother,
+}: {
+  problem: Problem;
+  email: string;
+  onForgot: () => void;
+  onRegister: () => void;
+  onSignIn: () => void;
+  onResend: () => void;
+  onTryAnother: () => void;
+}) {
+  const copy = PROBLEM_COPY[problem];
+  const action = "rounded-full px-3 py-1.5 text-xs font-medium transition";
+  const primary = `${action} bg-ink text-cream hover:bg-ink/90`;
+  const secondary = `${action} border border-ink/10 bg-surface/60 hover:border-ink/30`;
+
+  return (
+    <div role="alert" className="rounded-2xl border border-terra/30 bg-terra/5 p-3.5">
+      <p className="text-sm font-medium text-terra">{copy.title}</p>
+      <p className="mt-0.5 text-xs leading-relaxed text-ink/65">{copy.body(email)}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {problem === "wrong-password" && (
+          <>
+            <button type="button" onClick={onForgot} className={primary}>
+              Email me a reset link
+            </button>
+            <button type="button" onClick={onTryAnother} className={secondary}>
+              Use a different email
+            </button>
+          </>
+        )}
+        {problem === "no-account" && (
+          <>
+            <button type="button" onClick={onRegister} className={primary}>
+              Register with this email
+            </button>
+            <button type="button" onClick={onTryAnother} className={secondary}>
+              Use a different email
+            </button>
+          </>
+        )}
+        {problem === "unconfirmed" && (
+          <button type="button" onClick={onResend} className={primary}>
+            Resend confirmation email
+          </button>
+        )}
+        {problem === "already-registered" && (
+          <button type="button" onClick={onSignIn} className={primary}>
+            Go to sign in
+          </button>
+        )}
+      </div>
     </div>
   );
 }
