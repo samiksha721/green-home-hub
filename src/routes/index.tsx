@@ -6,17 +6,18 @@ import { PLANTS, PROS, type Plant, type PlantCategory, type Pro } from "@/lib/ca
 import { CartDrawer } from "@/components/CartDrawer";
 import { BookingDialog } from "@/components/BookingDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Cormorant — Plants, gardeners & grounds services" },
+      { title: "Roots — Plants, gardeners & grounds services" },
       {
         name: "description",
         content:
           "Shop curated plants and book vetted gardeners, landscape engineers, and exterior home pros — all on one account.",
       },
-      { property: "og:title", content: "Cormorant — Plants, gardeners & grounds services" },
+      { property: "og:title", content: "Roots — Plants, gardeners & grounds services" },
       {
         property: "og:description",
         content:
@@ -73,76 +74,73 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-cream font-body text-ink antialiased selection:bg-sage/20">
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-clip">
         {/* ambient blobs */}
         <div className="animate-drift pointer-events-none absolute -left-32 -top-40 size-[560px] rounded-full bg-sage/25 blur-3xl dark:opacity-50" />
         <div className="animate-drift-reverse pointer-events-none absolute right-[-160px] top-24 size-[520px] rounded-full bg-terra/15 blur-3xl dark:opacity-50" />
         <div className="animate-drift-slow pointer-events-none absolute bottom-0 left-1/3 size-[480px] rounded-full bg-sagelight/40 blur-3xl dark:opacity-50" />
 
-        <header className="relative z-20">
-          <nav className="border-b border-ink/5 bg-cream/60 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-2.5">
-                <span className="grid size-9 place-items-center rounded-full bg-sage/15 font-display text-lg font-semibold text-sage">
-                  C
-                </span>
-                <span className="font-display text-xl font-semibold tracking-tight">Cormorant</span>
-                <span className="mt-1 hidden font-display text-xs italic text-ink/45 sm:inline">
-                  greenhouse & grounds
-                </span>
-              </div>
-              <div className="hidden items-center gap-1 rounded-full border border-ink/5 bg-surface/50 p-1 backdrop-blur-md md:flex">
+        {/* floating header */}
+        <div className="sticky top-0 z-30 px-3 pt-3 sm:px-6">
+          <nav className="mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-full border border-ink/10 bg-surface/85 py-2 pl-2.5 pr-2 shadow-lg shadow-ink/5 backdrop-blur-xl">
+            <a href="#top" className="rounded-full pr-2" aria-label="Roots home">
+              <Logo tagline />
+            </a>
+            <div className="hidden items-center gap-0.5 md:flex">
+              {[
+                ["#shop", "Shop plants"],
+                ["#services", "Grounds"],
+                ["#booking", "Book a visit"],
+              ].map(([href, label]) => (
                 <a
-                  href="#shop"
-                  className="rounded-full bg-surface/70 px-4 py-1.5 text-sm font-medium text-ink shadow-sm ring-1 ring-ink/5"
+                  key={href}
+                  href={href}
+                  className="rounded-full px-4 py-1.5 text-sm text-ink/65 transition hover:bg-sage/10 hover:text-ink"
                 >
-                  Shop plants
+                  {label}
                 </a>
-                <a href="#services" className="rounded-full px-4 py-1.5 text-sm text-ink/60 transition hover:text-ink">
-                  Grounds
-                </a>
-                <a href="#booking" className="rounded-full px-4 py-1.5 text-sm text-ink/60 transition hover:text-ink">
-                  Book a visit
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
-                {user ? (
-                  <>
-                    <span className="hidden max-w-[16ch] truncate px-1 text-sm font-medium text-ink sm:block">
-                      {firstName}
-                    </span>
-                    <button
-                      onClick={() => supabase.auth.signOut()}
-                      className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
-                    >
-                      Sign out
-                    </button>
-                  </>
-                ) : (
-                  <Link
-                    to="/login"
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ThemeToggle />
+              {user ? (
+                <>
+                  <span className="hidden max-w-[16ch] truncate px-1 text-sm font-medium text-ink sm:block">
+                    {firstName}
+                  </span>
+                  <button
+                    onClick={() => supabase.auth.signOut()}
                     className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
                   >
-                    Sign in
-                  </Link>
-                )}
-                <button
-                  onClick={() => setCartOpen(true)}
-                  className="relative rounded-full border border-ink/10 bg-surface/60 px-4 py-2 text-sm font-medium backdrop-blur-md transition hover:border-ink/20"
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
                 >
-                  Bag
-                  {cartCount > 0 && (
-                    <span className="ml-1.5 inline-grid size-5 place-items-center rounded-full bg-terra text-[11px] font-semibold text-cream">
-                      {cartCount}
-                    </span>
-                  )}
-                </button>
-              </div>
+                  Sign in
+                </Link>
+              )}
+              <button
+                onClick={() => setCartOpen(true)}
+                className="relative rounded-full border border-ink/10 bg-surface/60 px-4 py-2 text-sm font-medium backdrop-blur-md transition hover:border-ink/20"
+              >
+                Bag
+                {cartCount > 0 && (
+                  <span className="ml-1.5 inline-grid size-5 place-items-center rounded-full bg-terra text-[11px] font-semibold text-cream">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
             </div>
           </nav>
+        </div>
 
-          <section className="animate-rise mx-auto max-w-7xl px-6 pb-4 pt-14">
+        <header id="top" className="relative z-20">
+
+          <section className="animate-rise mx-auto max-w-7xl px-6 pb-4 pt-12">
             <p className="mb-4 font-display text-sm italic text-sage">
               A living ledger · est. 2014 · grown, potted & tended
             </p>
@@ -172,7 +170,7 @@ function Index() {
 
         <main className="relative z-10 mx-auto max-w-7xl px-6 pb-24">
           {/* Plant shop */}
-          <section id="shop" className="scroll-mt-6 pt-10">
+          <section id="shop" className="scroll-mt-24 pt-10">
             <div className="mb-6 flex items-end justify-between border-b border-ink/10 pb-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">The plant wall</p>
@@ -230,7 +228,7 @@ function Index() {
           </section>
 
           {/* Professionals */}
-          <section id="services" className="scroll-mt-6 pt-20">
+          <section id="services" className="scroll-mt-24 pt-20">
             <div className="mb-6 flex items-end justify-between border-b border-ink/10 pb-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">The grounds team</p>
@@ -282,7 +280,7 @@ function Index() {
           </section>
 
           {/* Booking flow explainer */}
-          <section id="booking" className="scroll-mt-6 pt-16">
+          <section id="booking" className="scroll-mt-24 pt-16">
             <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
               <div className="relative overflow-hidden rounded-3xl border border-ink/5 bg-surface/50 p-6 backdrop-blur-xl">
                 <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-terra/15 blur-3xl dark:opacity-50" />
@@ -349,12 +347,7 @@ function Index() {
 
         <footer className="relative z-10 border-t border-ink/5 bg-cream/40 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-6 py-10 md:flex-row md:items-center">
-            <div className="flex items-center gap-2.5">
-              <span className="grid size-8 place-items-center rounded-full bg-sage/15 font-display font-semibold text-sage">
-                C
-              </span>
-              <span className="font-display text-lg font-semibold tracking-tight">Cormorant</span>
-            </div>
+            <Logo size="sm" />
             <p className="max-w-[40ch] text-sm text-ink/55">
               Grown in-house, planted with care. Plants & professional grounds services, on one account.
             </p>

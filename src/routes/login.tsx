@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { Check, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 
 type Mode = "signin" | "signup";
@@ -11,10 +12,10 @@ export const Route = createFileRoute("/login")({
     search["mode"] === "signup" ? { mode: "signup" } : {},
   head: () => ({
     meta: [
-      { title: "Sign in — Cormorant" },
+      { title: "Sign in — Roots" },
       {
         name: "description",
-        content: "Sign in to your Cormorant account to manage orders and garden appointments.",
+        content: "Sign in to your Roots account to manage orders and garden appointments.",
       },
     ],
   }),
@@ -205,17 +206,14 @@ function Login() {
     }`;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream font-body text-ink antialiased selection:bg-sage/20">
+    <div className="relative min-h-screen overflow-clip bg-cream font-body text-ink antialiased selection:bg-sage/20">
       <div className="animate-drift pointer-events-none absolute -left-32 -top-40 size-[560px] rounded-full bg-sage/25 blur-3xl dark:opacity-50" />
       <div className="animate-drift-reverse pointer-events-none absolute right-[-160px] top-1/3 size-[520px] rounded-full bg-terra/15 blur-3xl dark:opacity-50" />
 
-      <header className="relative z-20 border-b border-ink/5 bg-cream/60 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-full bg-sage/15 font-display text-lg font-semibold text-sage">
-              C
-            </span>
-            <span className="font-display text-xl font-semibold tracking-tight">Cormorant</span>
+      <header className="sticky top-0 z-30 px-3 pt-3 sm:px-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-full border border-ink/10 bg-surface/85 py-2 pl-2.5 pr-2 shadow-lg shadow-ink/5 backdrop-blur-xl">
+          <Link to="/" className="rounded-full pr-2" aria-label="Roots home">
+            <Logo />
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -229,7 +227,7 @@ function Login() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-6 py-12 lg:min-h-[calc(100vh-73px)] lg:grid-cols-[1fr_440px] lg:py-0">
+      <main className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-6 py-12 lg:min-h-[calc(100vh-68px)] lg:grid-cols-[1fr_440px] lg:py-0">
         <section className="animate-rise hidden lg:block">
           <p className="mb-4 font-display text-sm italic text-sage">Your greenhouse, remembered</p>
           <h1 className="max-w-[14ch] text-balance font-display text-6xl font-semibold leading-[0.95] tracking-tight">
@@ -403,7 +401,7 @@ function Login() {
               </form>
 
               <p className="mt-6 text-center text-sm text-ink/55">
-                {mode === "signin" ? "New to Cormorant? " : "Already have an account? "}
+                {mode === "signin" ? "New to Roots? " : "Already have an account? "}
                 <button
                   type="button"
                   onClick={() => switchMode(mode === "signin" ? "signup" : "signin")}
@@ -428,7 +426,7 @@ const PROBLEM_COPY: Record<Problem, { title: string; body: (email: string) => st
   },
   "no-account": {
     title: "We don't recognise this email",
-    body: (email) => `There's no Cormorant account for ${email} yet. Register to get started.`,
+    body: (email) => `There's no Roots account for ${email} yet. Register to get started.`,
   },
   unconfirmed: {
     title: "Confirm your email first",
