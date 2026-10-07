@@ -45,7 +45,7 @@ function Index() {
   }, []);
 
   const firstName =
-    (user?.user_metadata?.full_name as string | undefined)?.trim().split(/\s+/)[0] || user?.email || "";
+    (user?.user_metadata?.["full_name"] as string | undefined)?.trim().split(/\s+/)[0] || user?.email || "";
 
   const cartCount = Object.values(cart).reduce((n, q) => n + q, 0);
   const cartItems = useMemo(
