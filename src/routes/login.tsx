@@ -35,6 +35,8 @@ function Login() {
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const errors = {
     name: mode === "signup" && !name.trim() ? "Tell us your name" : "",
@@ -49,6 +51,8 @@ function Login() {
 
   const switchMode = (next: Mode) => {
     setSubmitted(false);
+    setAuthError("");
+    setNotice("");
     navigate({ search: next === "signup" ? { mode: "signup" } : {}, replace: true });
   };
 
@@ -162,7 +166,7 @@ function Login() {
               </h2>
               <p className="mt-2 max-w-[30ch] text-sm leading-relaxed text-ink/60">
                 {mode === "signup"
-                  ? `Welcome to Cormorant, ${name.trim()}.`
+                  ? "Check your email to confirm your account."
                   : `Signed in as ${email}.`}
               </p>
               <Link
@@ -248,6 +252,7 @@ function Login() {
                     {mode === "signin" && (
                       <button
                         type="button"
+                        onClick={onForgot}
                         className="text-xs text-ink/55 transition hover:text-terra"
                       >
                         Forgot password?
@@ -279,6 +284,8 @@ function Login() {
                   )}
                 </div>
 
+                {authError && <p className="text-xs text-terra">{authError}</p>}
+                {notice && <p className="text-xs text-sage">{notice}</p>}
                 <button
                   type="submit"
                   disabled={pending}
