@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Check, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
 
 type Mode = "signin" | "signup";
 
@@ -51,16 +52,49 @@ function Login() {
     navigate({ search: next === "signup" ? { mode: "signup" } : {}, replace: true });
   };
 
-  const onSubmit = (e: FormEvent) => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/", search: {} as never, replace: true });
+    });
+  }, [navigate]);
+
+  const onForgot = async () => {
+    setAuthError("");
+    setNotice("");
+    if (!email.trim() || !EMAIL_RE.test(email)) {
+      setAuthError("Enter your email above first, then tap Forgot password.");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + "/reset-password",
+    });
+    if (error) setAuthError(error.message);
+    else setNotice("If an account exists for that email, a reset link is on its way.");
+  };
+
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
+    setAuthError("");
+    setNotice("");
     if (hasErrors) return;
     setPending(true);
-    // No auth backend yet — simulate the request so the flow can be reviewed end to end.
-    setTimeout(() => {
+    if (mode === "signin") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       setPending(false);
-      setDone(true);
-    }, 700);
+      if (error) return setAuthError(error.message);
+      navigate({ to: "/", search: {} as never });
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name }, emailRedirectTo: window.location.origin },
+      });
+      setPending(false);
+      if (error) return setAuthError(error.message);
+      if (data.session) navigate({ to: "/", search: {} as never });
+      else setDone(true);
+    }
   };
 
   const fieldClass = (error: string) =>
