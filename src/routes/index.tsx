@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { PLANTS, PROS, type Plant, type PlantCategory, type Pro } from "@/lib/catalog";
 import { CartDrawer } from "@/components/CartDrawer";
 import { BookingDialog } from "@/components/BookingDialog";
@@ -34,6 +36,16 @@ function Index() {
   const [cartOpen, setCartOpen] = useState(false);
   const [bookingPro, setBookingPro] = useState<Pro | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const firstName =
+    (user?.user_metadata?.["full_name"] as string | undefined)?.trim().split(/\s+/)[0] || user?.email || "";
 
   const cartCount = Object.values(cart).reduce((n, q) => n + q, 0);
   const cartItems = useMemo(
@@ -95,12 +107,26 @@ function Index() {
               </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
-                <Link
-                  to="/login"
-                  className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
-                >
-                  Sign in
-                </Link>
+                {user ? (
+                  <>
+                    <span className="hidden max-w-[16ch] truncate px-1 text-sm font-medium text-ink sm:block">
+                      {firstName}
+                    </span>
+                    <button
+                      onClick={() => supabase.auth.signOut()}
+                      className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
+                  >
+                    Sign in
+                  </Link>
+                )}
                 <button
                   onClick={() => setCartOpen(true)}
                   className="relative rounded-full border border-ink/10 bg-surface/60 px-4 py-2 text-sm font-medium backdrop-blur-md transition hover:border-ink/20"
