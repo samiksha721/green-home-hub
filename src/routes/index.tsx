@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PLANTS, PROS, type Plant, type PlantCategory, type Pro } from "@/lib/catalog";
 import { CartDrawer } from "@/components/CartDrawer";
@@ -95,9 +95,12 @@ function Index() {
               </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
-                <button className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block">
+                <Link
+                  to="/login"
+                  className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
+                >
                   Sign in
-                </button>
+                </Link>
                 <button
                   onClick={() => setCartOpen(true)}
                   className="relative rounded-full border border-ink/10 bg-surface/60 px-4 py-2 text-sm font-medium backdrop-blur-md transition hover:border-ink/20"
