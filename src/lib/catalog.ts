@@ -1,22 +1,6 @@
-import monstera from "@/assets/plants/monstera.jpg";
-import fiddleLeafFig from "@/assets/plants/fiddle-leaf-fig.jpg";
-import stringOfPearls from "@/assets/plants/string-of-pearls.jpg";
-import rubberTree from "@/assets/plants/rubber-tree.jpg";
 import mara from "@/assets/pros/mara.jpg";
 import devin from "@/assets/pros/devin.jpg";
 import priya from "@/assets/pros/priya.jpg";
-
-export type PlantCategory = "Foliage" | "Flowering" | "Terrace";
-
-export interface Plant {
-  id: string;
-  name: string;
-  tagline: string;
-  price: number;
-  tag: string;
-  category: PlantCategory;
-  image: string;
-}
 
 export interface Pro {
   id: string;
