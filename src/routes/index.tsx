@@ -40,6 +40,7 @@ function Index() {
   const [bookingPro, setBookingPro] = useState<Pro | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
   const [user, setUser] = useState<User | null>(null);
+  const { data: plants } = useSuspenseQuery(plantsQuery);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
@@ -54,9 +55,9 @@ function Index() {
   const cartItems = useMemo(
     () =>
       Object.entries(cart)
-        .map(([id, qty]) => ({ plant: PLANTS.find((p) => p.id === id)!, qty }))
+        .map(([id, qty]) => ({ plant: plants.find((p) => p.id === id)!, qty }))
         .filter((i) => i.plant && i.qty > 0),
-    [cart],
+    [cart, plants],
   );
 
   const addPlant = (plant: Plant) => {
@@ -72,7 +73,7 @@ function Index() {
     });
   };
 
-  const visiblePlants = filter === "All" ? PLANTS : PLANTS.filter((p) => p.category === filter);
+  const visiblePlants = filter === "All" ? plants : plants.filter((p) => p.category === filter);
 
   return (
     <div className="min-h-screen bg-cream font-body text-ink antialiased selection:bg-sage/20">
@@ -204,14 +205,22 @@ function Index() {
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <div className="relative overflow-hidden rounded-xl">
-                    <img
-                      src={plant.image}
-                      alt={plant.name}
-                      loading="lazy"
-                      width={1024}
-                      height={1024}
-                      className="aspect-square w-full bg-sagelight object-cover outline-1 -outline-offset-1 outline-ink/5"
-                    />
+                    {plantImage(plant) ? (
+                      <img
+                        src={plantImage(plant)}
+                        alt={plant.name}
+                        loading="lazy"
+                        width={1024}
+                        height={1024}
+                        className="aspect-square w-full bg-sagelight object-cover outline-1 -outline-offset-1 outline-ink/5"
+                      />
+                    ) : (
+                      <div className="grid aspect-square w-full place-items-center bg-sagelight outline-1 -outline-offset-1 outline-ink/5">
+                        <span className="font-display text-5xl font-semibold text-sage/60">
+                          {plant.name.charAt(0)}
+                        </span>
+                      </div>
+                    )}
                     <span className="absolute left-2 top-2 rounded-full bg-surface/80 px-2.5 py-1 text-[11px] font-medium text-ink/70 backdrop-blur">
                       {plant.tag}
                     </span>
@@ -371,6 +380,9 @@ function Index() {
               <a href="#booking" className="transition hover:text-ink">
                 Book a visit
               </a>
+              <Link to="/admin" className="transition hover:text-ink">
+                Inventory
+              </Link>
             </div>
           </div>
         </footer>
