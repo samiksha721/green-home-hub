@@ -15,45 +15,6 @@ export interface Pro {
   services: string[];
 }
 
-export const PLANTS: Plant[] = [
-  {
-    id: "monstera",
-    name: "Monstera Deliciosa",
-    tagline: "The split-leaf classic",
-    price: 68,
-    tag: "Low light",
-    category: "Foliage",
-    image: monstera,
-  },
-  {
-    id: "fiddle",
-    name: "Fiddle Leaf Fig",
-    tagline: "Sculptural, statement",
-    price: 120,
-    tag: "Bright light",
-    category: "Foliage",
-    image: fiddleLeafFig,
-  },
-  {
-    id: "pearls",
-    name: "String of Pearls",
-    tagline: "Cascading succulent",
-    price: 42,
-    tag: "Trailing",
-    category: "Terrace",
-    image: stringOfPearls,
-  },
-  {
-    id: "rubber",
-    name: "Rubber Tree",
-    tagline: "Broad, glossy leaves",
-    price: 95,
-    tag: "Pet safe",
-    category: "Foliage",
-    image: rubberTree,
-  },
-];
-
 export const PROS: Pro[] = [
   {
     id: "mara",
