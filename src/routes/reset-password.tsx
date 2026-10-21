@@ -1,15 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Reset password — Cormorant" },
-      { name: "description", content: "Choose a new password for your Cormorant account." },
-      { property: "og:title", content: "Reset password — Cormorant" },
-      { property: "og:description", content: "Choose a new password for your Cormorant account." },
+      { title: "Reset password — Roots" },
+      { name: "description", content: "Choose a new password for your Roots account." },
+      { property: "og:title", content: "Reset password — Roots" },
+      { property: "og:description", content: "Choose a new password for your Roots account." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -35,15 +36,12 @@ function ResetPassword() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream font-body text-ink antialiased selection:bg-sage/20">
+    <div className="relative min-h-screen overflow-clip bg-cream font-body text-ink antialiased selection:bg-sage/20">
       <div className="animate-drift pointer-events-none absolute -left-32 -top-40 size-[560px] rounded-full bg-sage/25 blur-3xl dark:opacity-50" />
-      <header className="relative z-20 border-b border-ink/5 bg-cream/60 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-full bg-sage/15 font-display text-lg font-semibold text-sage">
-              C
-            </span>
-            <span className="font-display text-xl font-semibold tracking-tight">Cormorant</span>
+      <header className="sticky top-0 z-30 px-3 pt-3 sm:px-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-full border border-ink/10 bg-surface/85 py-2 pl-2.5 pr-2 shadow-lg shadow-ink/5 backdrop-blur-xl">
+          <Link to="/" className="rounded-full pr-2" aria-label="Roots home">
+            <Logo />
           </Link>
           <ThemeToggle />
         </div>

@@ -3,20 +3,26 @@ import { useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Upload, Download, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminStatus, claimShopOwnership, importPlants, type ImportRow } from "@/lib/inventory.functions";
+import { Logo } from "@/components/Logo";
+import {
+  adminStatus,
+  claimShopOwnership,
+  importPlants,
+  type ImportRow,
+} from "@/lib/inventory.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Cormorant — Inventory" },
+      { title: "Roots — Inventory" },
       {
         name: "description",
-        content: "Import and manage the plant inventory for the Cormorant greenhouse.",
+        content: "Import and manage the plant inventory for the Roots greenhouse.",
       },
-      { property: "og:title", content: "Cormorant — Inventory" },
+      { property: "og:title", content: "Roots — Inventory" },
       {
         property: "og:description",
-        content: "Import and manage the plant inventory for the Cormorant greenhouse.",
+        content: "Import and manage the plant inventory for the Roots greenhouse.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -69,7 +75,7 @@ function parseCsv(text: string): Row[] {
     return out;
   });
 
-  const header = cells[0].map((h) => h.toLowerCase().replace(/\s+/g, "_"));
+  const header = (cells[0] ?? []).map((h) => h.toLowerCase().replace(/\s+/g, "_"));
   const required = ["name", "price", "category", "stock"];
   for (const col of required) {
     if (!header.includes(col)) throw new Error(`Missing required column: ${col}`);
@@ -103,12 +109,20 @@ function Admin() {
       .select("id, name, category, price, stock")
       .order("name");
     setInventory(
-      (data ?? []).map((r) => ({ id: r.id, name: r.name, category: r.category, price: Number(r.price), stock: r.stock })),
+      (data ?? []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        category: r.category,
+        price: Number(r.price),
+        stock: r.stock,
+      })),
     );
   }, []);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
+      setUser(session?.user ?? null),
+    );
     supabase.auth.getSession().then(async ({ data }) => {
       const u = data.session?.user ?? null;
       setUser(u);
@@ -146,7 +160,10 @@ function Admin() {
       setRows(parsed);
     } catch (e) {
       setRows(null);
-      setMessage({ kind: "err", text: e instanceof Error ? e.message : "Could not read that file." });
+      setMessage({
+        kind: "err",
+        text: e instanceof Error ? e.message : "Could not read that file.",
+      });
     }
   };
 
@@ -156,7 +173,10 @@ function Admin() {
     setMessage(null);
     try {
       const res = await importPlants({ data: { rows } });
-      setMessage({ kind: "ok", text: `Imported ${res.imported} plant${res.imported === 1 ? "" : "s"}.` });
+      setMessage({
+        kind: "ok",
+        text: `Imported ${res.imported} plant${res.imported === 1 ? "" : "s"}.`,
+      });
       setRows(null);
       setFileName("");
       await refreshInventory();
@@ -188,13 +208,14 @@ function Admin() {
 
   return (
     <div className="min-h-screen bg-cream font-body text-ink antialiased selection:bg-sage/20">
-      <header className="border-b border-ink/5 bg-cream/60 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-full bg-sage/15 font-display text-lg font-semibold text-sage">
-              C
-            </span>
-            <span className="font-display text-xl font-semibold tracking-tight">Cormorant</span>
+      <header className="sticky top-0 z-30 px-3 pt-3 sm:px-6">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 rounded-full border border-ink/10 bg-surface/85 py-2 pl-2.5 pr-2 shadow-lg shadow-ink/5 backdrop-blur-xl">
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 rounded-full pr-2"
+            aria-label="Roots home"
+          >
+            <Logo />
             <span className="mt-1 font-display text-xs italic text-ink/45">inventory</span>
           </Link>
           {user ? (
@@ -220,7 +241,9 @@ function Admin() {
           <p className="text-sm text-ink/55">Loading…</p>
         ) : !user ? (
           <div className="rounded-3xl border border-ink/5 bg-surface/60 p-8 text-center backdrop-blur-xl">
-            <h1 className="font-display text-2xl font-semibold tracking-tight">Inventory is staff-only</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight">
+              Inventory is staff-only
+            </h1>
             <p className="mx-auto mt-2 max-w-[44ch] text-sm text-ink/60">
               Sign in with the shop's admin account to import plants and manage stock.
             </p>
@@ -256,8 +279,12 @@ function Admin() {
             <section className="rounded-3xl border border-ink/5 bg-surface/60 p-6 backdrop-blur-xl">
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">Supplier list</p>
-                  <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">Import plants</h1>
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">
+                    Supplier list
+                  </p>
+                  <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">
+                    Import plants
+                  </h1>
                 </div>
                 <button
                   onClick={downloadTemplate}
@@ -268,15 +295,19 @@ function Admin() {
                 </button>
               </div>
               <p className="mt-3 max-w-[60ch] text-sm leading-relaxed text-ink/60">
-                Upload your nursery's price list as a CSV. Columns: <code className="font-mono text-xs">name,
-                tagline, price, tag, category, stock, image_url</code>. Re-importing a name updates its price and
-                stock instead of duplicating it.
+                Upload your nursery's price list as a CSV. Columns:{" "}
+                <code className="font-mono text-xs">
+                  name, tagline, price, tag, category, stock, image_url
+                </code>
+                . Re-importing a name updates its price and stock instead of duplicating it.
               </p>
 
               <label className="mt-5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink/20 bg-sagelight/40 px-6 py-8 text-center transition hover:border-ink/40">
                 <Upload className="size-5 text-ink/50" />
                 <span className="text-sm font-medium">{fileName || "Choose a CSV file"}</span>
-                <span className="text-xs text-ink/50">{rows ? `${rows.length} plants ready to import` : "or drop it here"}</span>
+                <span className="text-xs text-ink/50">
+                  {rows ? `${rows.length} plants ready to import` : "or drop it here"}
+                </span>
                 <input
                   type="file"
                   accept=".csv,text/csv"
@@ -299,10 +330,27 @@ function Admin() {
                     <tbody>
                       {rows.map((r, i) => (
                         <tr key={i} className="border-t border-ink/5">
-                          <td className="px-4 py-2">{r.name || <span className="text-terra">missing</span>}</td>
-                          <td className="px-4 py-2 text-ink/60">{r.category || <span className="text-terra">missing</span>}</td>
-                          <td className="px-4 py-2">${Number.isFinite(r.price) ? r.price : <span className="text-terra">?</span>}</td>
-                          <td className="px-4 py-2 text-ink/60">{Number.isFinite(r.stock) ? r.stock : <span className="text-terra">?</span>}</td>
+                          <td className="px-4 py-2">
+                            {r.name || <span className="text-terra">missing</span>}
+                          </td>
+                          <td className="px-4 py-2 text-ink/60">
+                            {r.category || <span className="text-terra">missing</span>}
+                          </td>
+                          <td className="px-4 py-2">
+                            $
+                            {Number.isFinite(r.price) ? (
+                              r.price
+                            ) : (
+                              <span className="text-terra">?</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-ink/60">
+                            {Number.isFinite(r.stock) ? (
+                              r.stock
+                            ) : (
+                              <span className="text-terra">?</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -315,17 +363,25 @@ function Admin() {
                 disabled={!rows || busy}
                 className="mt-4 flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-cream transition hover:bg-ink/90 disabled:opacity-40"
               >
-                {busy ? <span className="animate-pulse">Importing…</span> : <Check className="size-4" />}
+                {busy ? (
+                  <span className="animate-pulse">Importing…</span>
+                ) : (
+                  <Check className="size-4" />
+                )}
                 {busy ? "Importing" : `Import ${rows?.length ?? 0} plants`}
               </button>
 
               {message && (
-                <p className={`mt-3 text-sm ${message.kind === "ok" ? "text-sage" : "text-terra"}`}>{message.text}</p>
+                <p className={`mt-3 text-sm ${message.kind === "ok" ? "text-sage" : "text-terra"}`}>
+                  {message.text}
+                </p>
               )}
             </section>
 
             <section className="rounded-3xl border border-ink/5 bg-surface/60 p-6 backdrop-blur-xl">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">Current stock</p>
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">
+                Current stock
+              </p>
               <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight">
                 {inventory.length} plant{inventory.length === 1 ? "" : "s"} in the greenhouse
               </h2>
