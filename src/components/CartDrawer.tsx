@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, ShoppingBag } from "lucide-react";
-import type { Plant } from "@/lib/catalog";
+import { plantImage, type Plant } from "@/lib/plants";
 
 interface CartDrawerProps {
   open: boolean;
@@ -50,14 +50,20 @@ export function CartDrawer({ open, items, onClose, onUpdateQty, onCheckout }: Ca
             <ul className="space-y-5">
               {items.map(({ plant, qty }) => (
                 <li key={plant.id} className="flex items-center gap-4">
-                  <img
-                    src={plant.image}
-                    alt={plant.name}
-                    loading="lazy"
-                    width={1024}
-                    height={1024}
-                    className="size-16 shrink-0 rounded-xl border border-ink/5 object-cover"
-                  />
+                  {plantImage(plant) ? (
+                    <img
+                      src={plantImage(plant)}
+                      alt={plant.name}
+                      loading="lazy"
+                      width={1024}
+                      height={1024}
+                      className="size-16 shrink-0 rounded-xl border border-ink/5 object-cover"
+                    />
+                  ) : (
+                    <div className="grid size-16 shrink-0 place-items-center rounded-xl border border-ink/5 bg-sagelight font-display text-xl font-semibold text-sage/60">
+                      {plant.name.charAt(0)}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-base font-semibold leading-tight">{plant.name}</p>
                     <p className="text-sm text-ink/55">{plant.tagline}</p>
