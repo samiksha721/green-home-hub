@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { plantsQuery, plantImage, type Plant } from "@/lib/plants";
+import { plantsQuery, plantImage, type Plant, type PlantCategory } from "@/lib/plants";
 import { PROS, type Pro } from "@/lib/catalog";
 import { CartDrawer } from "@/components/CartDrawer";
 import { BookingDialog } from "@/components/BookingDialog";
