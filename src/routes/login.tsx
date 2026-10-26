@@ -4,6 +4,7 @@ import { Check, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 
 type Mode = "signin" | "signup";
 
@@ -116,6 +117,23 @@ function Login() {
     });
     if (error) setAuthError(error.message);
     else setNotice("If an account exists for that email, a reset link is on its way.");
+  };
+
+  const onGoogle = async () => {
+    clearMessages();
+    setPending(true);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.redirected) return;
+    setPending(false);
+    if (result.error) {
+      const message =
+        result.error instanceof Error
+          ? result.error.message
+          : "Google sign-in didn't go through. Please try again.";
+      setAuthError(message);
+    }
   };
 
   const onResendConfirmation = async () => {
@@ -298,7 +316,23 @@ function Login() {
                   : "Save your bag, bookings, and plant care notes."}
               </p>
 
-              <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+              <button
+                type="button"
+                onClick={onGoogle}
+                disabled={pending}
+                className="w-full rounded-full border border-ink/10 bg-surface/60 px-5 py-3 text-sm font-medium transition hover:border-ink/30 disabled:cursor-wait disabled:opacity-60"
+              >
+                <span className="flex items-center justify-center gap-2.5">
+                  <GoogleG />
+                  Continue with Google
+                </span>
+              </button>
+              <div className="my-4 flex items-center gap-3 text-xs text-ink/40">
+                <span className="h-px flex-1 bg-ink/10" />
+                or
+                <span className="h-px flex-1 bg-ink/10" />
+              </div>
+              <form onSubmit={onSubmit} noValidate className="space-y-4">
                 {mode === "signup" && (
                   <div>
                     <label htmlFor="name" className="text-sm font-medium">
@@ -415,6 +449,29 @@ function Login() {
         </div>
       </main>
     </div>
+  );
+}
+
+function GoogleG() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M23.5 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.54 5.54 0 0 1-2.4 3.63v3.02h3.86c2.26-2.09 3.57-5.17 3.57-8.89Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3.02c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A11.99 11.99 0 0 0 12 24Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.27 14.27a7.2 7.2 0 0 1 0-4.54V6.64H1.29a11.99 11.99 0 0 0 0 10.72l3.98-3.09Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.77c1.76 0 3.34.61 4.58 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0 7.7 0 3.99 2.47 1.29 6.64l3.98 3.09C6.22 6.88 8.87 4.77 12 4.77Z"
+      />
+    </svg>
   );
 }
 
