@@ -1,30 +1,35 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import type { User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { plantsQuery, plantImage, type Plant, type PlantCategory } from "@/lib/plants";
-import { PROS, type Pro } from "@/lib/catalog";
-import { CartDrawer } from "@/components/CartDrawer";
+import { MapPin } from "lucide-react";
+import { plantsQuery, plantImage, type PlantCategory } from "@/lib/plants";
+import { PROS, prosServing, type Pro } from "@/lib/catalog";
+import { CITY, useLocality } from "@/lib/localities";
+import { useCart } from "@/lib/cart";
+import { formatINR } from "@/lib/format";
 import { BookingDialog } from "@/components/BookingDialog";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Logo } from "@/components/Logo";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { ProAvatar } from "@/components/ProAvatar";
 
 export const Route = createFileRoute("/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(plantsQuery),
   head: () => ({
     meta: [
-      { title: "Roots — Plants, gardeners & grounds services" },
+      { title: "Roots — Plants, gardeners & grounds services in Bangalore" },
       {
         name: "description",
         content:
-          "Shop curated plants and book vetted gardeners, landscape engineers, and exterior home pros — all on one account.",
+          "Shop curated plants and book vetted gardeners, landscape engineers, and exterior home pros across Bangalore.",
       },
-      { property: "og:title", content: "Roots — Plants, gardeners & grounds services" },
+      {
+        property: "og:title",
+        content: "Roots — Plants, gardeners & grounds services in Bangalore",
+      },
       {
         property: "og:description",
         content:
-          "Shop curated plants and book vetted gardeners, landscape engineers, and exterior home pros — all on one account.",
+          "Shop curated plants and book vetted gardeners, landscape engineers, and exterior home pros across Bangalore.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -36,45 +41,14 @@ export const Route = createFileRoute("/")({
 const FILTERS: ("All" | PlantCategory)[] = ["All", "Foliage", "Flowering", "Terrace"];
 
 function Index() {
-  const [cart, setCart] = useState<Record<string, number>>({});
-  const [cartOpen, setCartOpen] = useState(false);
   const [bookingPro, setBookingPro] = useState<Pro | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
-  const [user, setUser] = useState<User | null>(null);
+  const [locality, setLocality] = useLocality();
   const { data: plants } = useSuspenseQuery(plantsQuery);
-
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  const firstName =
-    (user?.user_metadata?.["full_name"] as string | undefined)?.trim().split(/\s+/)[0] || user?.email || "";
-
-  const cartCount = Object.values(cart).reduce((n, q) => n + q, 0);
-  const cartItems = useMemo(
-    () =>
-      Object.entries(cart)
-        .map(([id, qty]) => ({ plant: plants.find((p) => p.id === id)!, qty }))
-        .filter((i) => i.plant && i.qty > 0),
-    [cart, plants],
-  );
-
-  const addPlant = (plant: Plant) => {
-    setCart((c) => ({ ...c, [plant.id]: (c[plant.id] ?? 0) + 1 }));
-  };
-
-  const updateQty = (id: string, delta: number) => {
-    setCart((c) => {
-      const qty = Math.max(0, (c[id] ?? 0) + delta);
-      const next = { ...c, [id]: qty };
-      if (qty === 0) delete next[id];
-      return next;
-    });
-  };
+  const cart = useCart();
 
   const visiblePlants = filter === "All" ? plants : plants.filter((p) => p.category === filter);
+  const pros = prosServing(locality);
 
   return (
     <div className="min-h-screen bg-cream font-body text-ink antialiased selection:bg-sage/20">
@@ -84,76 +58,21 @@ function Index() {
         <div className="animate-drift-reverse pointer-events-none absolute right-[-160px] top-24 size-[520px] rounded-full bg-terra/15 blur-3xl dark:opacity-50" />
         <div className="animate-drift-slow pointer-events-none absolute bottom-0 left-1/3 size-[480px] rounded-full bg-sagelight/40 blur-3xl dark:opacity-50" />
 
-        {/* floating header */}
-        <div className="sticky top-0 z-30 px-3 pt-3 sm:px-6">
-          <nav className="mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-full border border-ink/10 bg-surface/85 py-2 pl-2.5 pr-2 shadow-lg shadow-ink/5 backdrop-blur-xl">
-            <a href="#top" className="rounded-full pr-2" aria-label="Roots home">
-              <Logo tagline />
-            </a>
-            <div className="hidden items-center gap-0.5 md:flex">
-              {[
-                ["#shop", "Shop plants"],
-                ["#services", "Grounds"],
-                ["#booking", "Book a visit"],
-              ].map(([href, label]) => (
-                <a
-                  key={href}
-                  href={href}
-                  className="rounded-full px-4 py-1.5 text-sm text-ink/65 transition hover:bg-sage/10 hover:text-ink"
-                >
-                  {label}
-                </a>
-              ))}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <ThemeToggle />
-              {user ? (
-                <>
-                  <span className="hidden max-w-[16ch] truncate px-1 text-sm font-medium text-ink sm:block">
-                    {firstName}
-                  </span>
-                  <button
-                    onClick={() => supabase.auth.signOut()}
-                    className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
-                  >
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/login"
-                  className="hidden rounded-full px-3 py-1.5 text-sm text-ink/60 transition hover:text-ink sm:block"
-                >
-                  Sign in
-                </Link>
-              )}
-              <button
-                onClick={() => setCartOpen(true)}
-                className="relative rounded-full border border-ink/10 bg-surface/60 px-4 py-2 text-sm font-medium backdrop-blur-md transition hover:border-ink/20"
-              >
-                Bag
-                {cartCount > 0 && (
-                  <span className="ml-1.5 inline-grid size-5 place-items-center rounded-full bg-terra text-[11px] font-semibold text-cream">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
-            </div>
-          </nav>
-        </div>
+        <SiteHeader />
 
         <header id="top" className="relative z-20">
-
           <section className="animate-rise mx-auto max-w-7xl px-6 pb-4 pt-12">
-            <p className="mb-4 font-display text-sm italic text-sage">
-              A living ledger · est. 2014 · grown, potted & tended
+            <p className="mb-4 flex items-center gap-1.5 font-display text-sm italic text-sage">
+              <MapPin className="size-3.5" aria-hidden />
+              Now growing in {CITY} · grown, potted & tended
             </p>
-            <h1 className="max-w-[16ch] text-balance font-display text-6xl font-semibold leading-[0.95] tracking-tight sm:text-7xl">
-              Plants that <span className="italic text-sage">belong</span>, and hands that keep them.
+            <h1 className="max-w-[16ch] text-balance font-display text-5xl font-semibold leading-[1.02] tracking-tight sm:text-7xl">
+              Plants that <span className="italic text-sage">belong</span>, and hands that keep
+              them.
             </h1>
             <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-ink/65">
-              Browse a curated wall of living things, then book the gardener, landscaper, or exterior pro who will make
-              them thrive at your home.
+              Browse a curated wall of living things from Roots and trusted local nurseries, then
+              book the gardener, landscaper, or exterior pro who will make them thrive at your home.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a
@@ -175,12 +94,19 @@ function Index() {
         <main className="relative z-10 mx-auto max-w-7xl px-6 pb-24">
           {/* Plant shop */}
           <section id="shop" className="scroll-mt-24 pt-10">
-            <div className="mb-6 flex items-end justify-between border-b border-ink/10 pb-4">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-ink/10 pb-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">The plant wall</p>
-                <h2 className="mt-1 font-display text-3xl font-semibold tracking-tight">In season this week</h2>
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">
+                  The plant wall
+                </p>
+                <h2 className="mt-1 font-display text-3xl font-semibold tracking-tight">
+                  In season this week
+                </h2>
+                <p className="mt-1 text-sm text-ink/55">
+                  Delivered anywhere in {CITY} · free over {formatINR(999)}
+                </p>
               </div>
-              <div className="hidden items-center gap-2 md:flex">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {FILTERS.map((f) => (
                   <button
                     key={f}
@@ -195,199 +121,200 @@ function Index() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
-              {visiblePlants.map((plant, i) => (
-                <div
-                  key={plant.id}
-                  className="animate-rise group rounded-2xl border border-ink/5 bg-surface/55 p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:bg-surface/75"
-                  style={{ animationDelay: `${i * 60}ms` }}
-                >
-                  <div className="relative overflow-hidden rounded-xl">
-                    {plantImage(plant) ? (
-                      <img
-                        src={plantImage(plant)}
-                        alt={plant.name}
-                        loading="lazy"
-                        width={1024}
-                        height={1024}
-                        className="aspect-square w-full bg-sagelight object-cover outline-1 -outline-offset-1 outline-ink/5"
-                      />
-                    ) : (
-                      <div className="grid aspect-square w-full place-items-center bg-sagelight outline-1 -outline-offset-1 outline-ink/5">
-                        <span className="font-display text-5xl font-semibold text-sage/60">
-                          {plant.name.charAt(0)}
-                        </span>
-                      </div>
-                    )}
-                    <span className="absolute left-2 top-2 rounded-full bg-surface/80 px-2.5 py-1 text-[11px] font-medium text-ink/70 backdrop-blur">
-                      {plant.tag}
-                    </span>
-                  </div>
-                  <h3 className="mt-3 font-display text-lg font-semibold leading-tight">{plant.name}</h3>
-                  <p className="text-sm text-ink/50">{plant.tagline}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="font-display text-lg font-semibold">${plant.price}</span>
-                    <button
-                      onClick={() => addPlant(plant)}
-                      className="rounded-full border border-ink/10 bg-surface/60 px-3 py-1.5 text-sm font-medium transition hover:border-terra hover:text-terra"
+            {visiblePlants.length === 0 ? (
+              <p className="py-12 text-center text-sm text-ink/55">
+                No {filter.toLowerCase()} plants in stock right now.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
+                {visiblePlants.map((plant, i) => {
+                  const inBag = cart.qtyOf(plant.id);
+                  const soldOut = plant.stock <= 0;
+                  const atLimit = inBag >= plant.stock;
+                  return (
+                    <div
+                      key={plant.id}
+                      className="animate-rise group flex flex-col rounded-2xl border border-ink/5 bg-surface/55 p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:bg-surface/75"
+                      style={{ animationDelay: `${i * 60}ms` }}
                     >
-                      {cart[plant.id] ? `Add (${cart[plant.id]})` : "Add"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <div className="relative overflow-hidden rounded-xl">
+                        {plantImage(plant) ? (
+                          <img
+                            src={plantImage(plant)}
+                            alt={plant.name}
+                            loading="lazy"
+                            width={1024}
+                            height={1024}
+                            className="aspect-square w-full bg-sagelight object-cover outline-1 -outline-offset-1 outline-ink/5"
+                          />
+                        ) : (
+                          <div className="grid aspect-square w-full place-items-center bg-sagelight outline-1 -outline-offset-1 outline-ink/5">
+                            <span className="font-display text-5xl font-semibold text-sage/60">
+                              {plant.name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
+                        {plant.tag && (
+                          <span className="absolute left-2 top-2 rounded-full bg-surface/80 px-2.5 py-1 text-[11px] font-medium text-ink/70 backdrop-blur">
+                            {plant.tag}
+                          </span>
+                        )}
+                        {soldOut && (
+                          <span className="absolute right-2 top-2 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-medium text-cream">
+                            Sold out
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="mt-3 font-display text-lg font-semibold leading-tight">
+                        {plant.name}
+                      </h3>
+                      <p className="text-sm text-ink/55">{plant.tagline}</p>
+                      {plant.vendorName && (
+                        <p className="mt-0.5 text-xs text-ink/45">Sold by {plant.vendorName}</p>
+                      )}
+                      <div className="mt-auto flex items-center justify-between pt-2">
+                        <span className="font-display text-lg font-semibold">
+                          {formatINR(plant.price)}
+                        </span>
+                        <button
+                          onClick={() => cart.add(plant)}
+                          disabled={soldOut || atLimit}
+                          className="rounded-full border border-ink/10 bg-surface/60 px-3 py-1.5 text-sm font-medium transition hover:border-terra hover:text-terra disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ink/10 disabled:hover:text-ink"
+                        >
+                          {soldOut ? "Sold out" : inBag ? `Add (${inBag})` : "Add"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           {/* Professionals */}
           <section id="services" className="scroll-mt-24 pt-20">
-            <div className="mb-6 flex items-end justify-between border-b border-ink/10 pb-4">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-ink/10 pb-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">The grounds team</p>
-                <h2 className="mt-1 font-display text-3xl font-semibold tracking-tight">People who keep it alive</h2>
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">
+                  The grounds team
+                </p>
+                <h2 className="mt-1 font-display text-3xl font-semibold tracking-tight">
+                  People who keep it alive
+                </h2>
+                <p className="mt-1 text-sm text-ink/55">
+                  {locality
+                    ? `${pros.length} of ${PROS.length} experts travel to ${locality}`
+                    : `Vetted, insured experts across ${CITY} — choose your area to see who comes to you`}
+                </p>
               </div>
-              <p className="hidden max-w-[28ch] text-sm text-ink/55 md:block">
-                Every expert is vetted, insured, and rated by homeowners within a 30-mile radius.
-              </p>
+              {locality && (
+                <button
+                  onClick={() => setLocality(null)}
+                  className="rounded-full px-3 py-1 text-xs font-medium text-ink/55 transition hover:text-ink"
+                >
+                  Show all areas
+                </button>
+              )}
             </div>
 
-            <div className="grid gap-5 md:grid-cols-3">
-              {PROS.map((pro, i) => (
-                <div
-                  key={pro.id}
-                  className="animate-rise flex flex-col rounded-2xl border border-ink/5 bg-surface/55 p-4 backdrop-blur-xl"
-                  style={{ animationDelay: `${(i + 1) * 60}ms` }}
+            {pros.length === 0 ? (
+              <div className="rounded-2xl border border-ink/5 bg-surface/55 p-8 text-center">
+                <p className="font-display text-lg font-semibold">No experts in {locality} yet</p>
+                <p className="mt-1 text-sm text-ink/55">
+                  We're adding new areas every month. See everyone across {CITY}:
+                </p>
+                <button
+                  onClick={() => setLocality(null)}
+                  className="mt-4 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-cream transition hover:bg-ink/90"
                 >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={pro.image}
-                      alt={pro.name}
-                      loading="lazy"
-                      width={1024}
-                      height={1024}
-                      className="size-14 shrink-0 rounded-full border border-ink/5 object-cover"
-                    />
-                    <div>
-                      <h3 className="font-display text-lg font-semibold leading-tight">{pro.name}</h3>
-                      <p className="text-sm text-ink/50">{pro.role}</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm leading-relaxed text-ink/60">{pro.blurb}</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-sage/10 px-2.5 py-1 text-xs text-sage">Next: {pro.next}</span>
-                    <span className="rounded-full bg-surface/70 px-2.5 py-1 text-xs text-ink/60">${pro.rate}/hr</span>
-                    <span className="rounded-full bg-surface/70 px-2.5 py-1 text-xs text-ink/60">
-                      {pro.rating} ({pro.reviews})
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setBookingPro(pro)}
-                    className="mt-4 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-cream transition hover:bg-ink/90"
+                  Show all experts
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-3">
+                {pros.map((pro, i) => (
+                  <div
+                    key={pro.id}
+                    className="animate-rise flex flex-col rounded-2xl border border-ink/5 bg-surface/55 p-4 backdrop-blur-xl"
+                    style={{ animationDelay: `${(i + 1) * 60}ms` }}
                   >
-                    Book an appointment
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <div className="flex items-center gap-3">
+                      <ProAvatar pro={pro} />
+                      <div>
+                        <h3 className="font-display text-lg font-semibold leading-tight">
+                          {pro.name}
+                        </h3>
+                        <p className="text-sm text-ink/55">{pro.role}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-ink/65">{pro.blurb}</p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-sage/10 px-2.5 py-1 text-xs text-sage">
+                        Next: {pro.next}
+                      </span>
+                      <span className="rounded-full bg-surface/70 px-2.5 py-1 text-xs text-ink/65">
+                        {formatINR(pro.rate)}/hr
+                      </span>
+                      <span className="rounded-full bg-surface/70 px-2.5 py-1 text-xs text-ink/65">
+                        ★ {pro.rating.toFixed(1)} ({pro.reviews})
+                      </span>
+                    </div>
+                    <p className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-ink/50">
+                      <MapPin className="mt-0.5 size-3 shrink-0" aria-hidden />
+                      {pro.areas.join(" · ")}
+                    </p>
+                    <div className="flex-1" />
+                    <button
+                      onClick={() => setBookingPro(pro)}
+                      className="mt-4 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-cream transition hover:bg-ink/90"
+                    >
+                      Book an appointment
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
-          {/* Booking flow explainer */}
-          <section id="booking" className="scroll-mt-24 pt-16">
-            <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="relative overflow-hidden rounded-3xl border border-ink/5 bg-surface/50 p-6 backdrop-blur-xl">
-                <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-terra/15 blur-3xl dark:opacity-50" />
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">Booking flow</p>
-                <h2 className="mt-2 max-w-[18ch] text-balance font-display text-3xl font-semibold leading-tight tracking-tight">
-                  Pick a time in thirty seconds
-                </h2>
-                <p className="mt-3 max-w-[40ch] text-sm leading-relaxed text-ink/60">
-                  Choose what you need, a pro, and a slot that fits. We hold your spot and confirm by text.
-                </p>
-                <ol className="mt-6 space-y-3">
-                  {["Choose your service", "Match a nearby expert", "Confirm & get reminders"].map((step, i) => (
-                    <li key={step} className="flex items-center gap-3 text-sm">
-                      <span className="grid size-6 place-items-center rounded-full bg-sage/15 font-display text-xs font-semibold text-sage">
-                        {i + 1}
-                      </span>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
-              <div className="rounded-3xl border border-ink/5 bg-surface/70 p-5 ring-1 ring-ink/5 backdrop-blur-2xl">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">Start a booking</p>
-                  <span className="rounded-full bg-sage/10 px-2.5 py-1 text-xs font-medium text-sage">
-                    Next openings this week
-                  </span>
+          {/* Vendors */}
+          <section id="sell" className="scroll-mt-24 pt-16">
+            <div className="relative overflow-hidden rounded-3xl border border-ink/5 bg-surface/55 p-6 backdrop-blur-xl sm:p-8">
+              <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-terra/15 blur-3xl dark:opacity-50" />
+              <div className="relative grid gap-6 md:grid-cols-[1.2fr_1fr] md:items-center">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-terra">
+                    For nurseries & growers
+                  </p>
+                  <h2 className="mt-2 max-w-[20ch] text-balance font-display text-3xl font-semibold leading-tight tracking-tight">
+                    Sell your plants to homes across {CITY}
+                  </h2>
+                  <p className="mt-3 max-w-[48ch] text-sm leading-relaxed text-ink/65">
+                    Register your nursery, upload your plants with photos and prices, and we'll list
+                    them once our team has reviewed them. Roots handles the storefront and checkout.
+                  </p>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-ink/60">
-                  Pick any professional above to open live availability — service, day, time, and address in one sheet.
-                </p>
-                <div className="mt-4 space-y-2.5">
-                  {PROS.map((pro) => (
-                    <button
-                      key={pro.id}
-                      onClick={() => setBookingPro(pro)}
-                      className="flex w-full items-center gap-3 rounded-2xl bg-sagelight/50 p-3 text-left transition hover:bg-sagelight"
-                    >
-                      <img
-                        src={pro.image}
-                        alt={pro.name}
-                        loading="lazy"
-                        width={1024}
-                        height={1024}
-                        className="size-12 shrink-0 rounded-full border border-ink/5 object-cover"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-display text-base font-semibold leading-tight">{pro.name}</p>
-                        <p className="truncate text-sm text-ink/55">
-                          {pro.role} · ${pro.rate}/hr
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-sage/10 px-2.5 py-1 text-xs font-medium text-sage">
-                        {pro.next}
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-3 md:justify-end">
+                  <Link
+                    to="/vendor"
+                    className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-cream transition hover:bg-ink/90"
+                  >
+                    Become a vendor
+                  </Link>
+                  <Link
+                    to="/vendor/guidelines"
+                    className="rounded-full border border-ink/15 bg-surface/50 px-6 py-3 text-sm font-medium transition hover:border-ink/30"
+                  >
+                    Read the guidelines
+                  </Link>
                 </div>
               </div>
             </div>
           </section>
         </main>
 
-        <footer className="relative z-10 border-t border-ink/5 bg-cream/40 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-6 py-10 md:flex-row md:items-center">
-            <Logo size="sm" />
-            <p className="max-w-[40ch] text-sm text-ink/55">
-              Grown in-house, planted with care. Plants & professional grounds services, on one account.
-            </p>
-            <div className="flex gap-5 text-sm text-ink/55">
-              <a href="#shop" className="transition hover:text-ink">
-                Shop
-              </a>
-              <a href="#services" className="transition hover:text-ink">
-                Grounds
-              </a>
-              <a href="#booking" className="transition hover:text-ink">
-                Book a visit
-              </a>
-              <Link to="/admin" className="transition hover:text-ink">
-                Inventory
-              </Link>
-            </div>
-          </div>
-        </footer>
+        <SiteFooter />
       </div>
 
-      <CartDrawer
-        open={cartOpen}
-        items={cartItems}
-        onClose={() => setCartOpen(false)}
-        onUpdateQty={updateQty}
-        onCheckout={() => setCartOpen(false)}
-      />
       <BookingDialog pro={bookingPro} onClose={() => setBookingPro(null)} />
     </div>
   );

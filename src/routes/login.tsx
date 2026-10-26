@@ -5,12 +5,36 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import {
+  isValidUsername,
+  normaliseUsername,
+  requestUsernamePasswordReset,
+  resendUsernameConfirmation,
+  signInWithUsername,
+} from "@/lib/account.functions";
 
 type Mode = "signin" | "signup";
 
+interface LoginSearch {
+  mode?: Mode;
+  /** Same-site path to return to after signing in, e.g. /checkout. */
+  redirect?: string;
+}
+
+function safeRedirect(value: unknown): string | undefined {
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : undefined;
+}
+
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>): { mode?: Mode } =>
-    search["mode"] === "signup" ? { mode: "signup" } : {},
+  validateSearch: (search: Record<string, unknown>): LoginSearch => {
+    const out: LoginSearch = {};
+    if (search["mode"] === "signup") out.mode = "signup";
+    const redirect = safeRedirect(search["redirect"]);
+    if (redirect) out.redirect = redirect;
+    return out;
+  },
   head: () => ({
     meta: [
       { title: "Sign in — Roots" },
@@ -51,8 +75,13 @@ function Login() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const mode: Mode = search.mode ?? "signin";
+  const returnTo = search.redirect ?? "/";
 
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameState, setUsernameState] = useState<"idle" | "checking" | "available" | "taken">(
+    "idle",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -63,9 +92,31 @@ function Login() {
   const [notice, setNotice] = useState("");
   const [problem, setProblem] = useState<Problem | null>(null);
 
+  // On sign-in the first field takes an email or a username.
+  const signingInWithUsername = mode === "signin" && !email.includes("@");
   const errors = {
     name: mode === "signup" && !name.trim() ? "Tell us your name" : "",
-    email: !email.trim() ? "Email is required" : !EMAIL_RE.test(email) ? "Enter a valid email" : "",
+    username:
+      mode !== "signup"
+        ? ""
+        : !username.trim()
+          ? "Choose a username"
+          : !isValidUsername(username)
+            ? "3–20 characters: letters, numbers, dots or underscores"
+            : usernameState === "taken"
+              ? "That username is taken"
+              : "",
+    email: !email.trim()
+      ? mode === "signin"
+        ? "Enter your email or username"
+        : "Email is required"
+      : signingInWithUsername
+        ? isValidUsername(email)
+          ? ""
+          : "Enter a valid email or username"
+        : !EMAIL_RE.test(email)
+          ? "Enter a valid email"
+          : "",
     password: !password
       ? "Password is required"
       : mode === "signup" && password.length < 8
@@ -83,8 +134,34 @@ function Login() {
   const switchMode = (next: Mode) => {
     setSubmitted(false);
     clearMessages();
-    navigate({ search: next === "signup" ? { mode: "signup" } : {}, replace: true });
+    navigate({
+      search: {
+        ...(next === "signup" ? { mode: "signup" as const } : {}),
+        ...(search.redirect ? { redirect: search.redirect } : {}),
+      },
+      replace: true,
+    });
   };
+
+  // Live username availability while registering.
+  useEffect(() => {
+    if (mode !== "signup" || !isValidUsername(username)) {
+      setUsernameState("idle");
+      return;
+    }
+    setUsernameState("checking");
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const { data, error } = await supabase.rpc("username_available", {
+        p_username: normaliseUsername(username),
+      });
+      if (!cancelled) setUsernameState(error ? "idle" : data ? "available" : "taken");
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [mode, username]);
 
   // Returning users: prefill the email they last signed in with.
   useEffect(() => {
@@ -92,7 +169,7 @@ function Login() {
       const last = localStorage.getItem(LAST_EMAIL_KEY);
       if (last) setEmail((current) => current || last);
       // Nobody has signed in on this device before: start them on registration.
-      else if (!search.mode) navigate({ search: { mode: "signup" }, replace: true });
+      else if (!search.mode) navigate({ search: { ...search, mode: "signup" }, replace: true });
     } catch {
       // storage unavailable
     }
@@ -102,19 +179,27 @@ function Login() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/", search: {} as never, replace: true });
+      if (data.session) navigate({ to: returnTo, replace: true });
     });
-  }, [navigate]);
+  }, [navigate, returnTo]);
 
   const onForgot = async () => {
     clearMessages();
-    if (!email.trim() || !EMAIL_RE.test(email)) {
-      setAuthError("Enter your email above first, then tap Forgot password.");
+    const redirectTo = window.location.origin + "/reset-password";
+    if (email.trim() && !email.includes("@") && isValidUsername(email)) {
+      try {
+        await requestUsernamePasswordReset({ data: { username: email, redirectTo } });
+        setNotice("If that username has an account, a reset link is on its way to its email.");
+      } catch {
+        setAuthError("We couldn't send a reset link just now. Please try again.");
+      }
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/reset-password",
-    });
+    if (!email.trim() || !EMAIL_RE.test(email)) {
+      setAuthError("Enter your email or username above first, then tap Forgot password.");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) setAuthError(error.message);
     else setNotice("If an account exists for that email, a reset link is on its way.");
   };
@@ -138,6 +223,17 @@ function Login() {
 
   const onResendConfirmation = async () => {
     clearMessages();
+    if (!email.includes("@")) {
+      try {
+        await resendUsernameConfirmation({
+          data: { username: email, redirectTo: window.location.origin },
+        });
+        setNotice("We've sent a new confirmation link to the email on that account.");
+      } catch {
+        setAuthError("We couldn't resend the link just now. Please try again.");
+      }
+      return;
+    }
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
@@ -149,6 +245,11 @@ function Login() {
 
   const goRegister = () => {
     setPassword("");
+    // An unknown username carries over as the username to register; an email stays as the email.
+    if (!email.includes("@")) {
+      setUsername(normaliseUsername(email));
+      setEmail("");
+    }
     switchMode("signup");
   };
 
@@ -170,12 +271,34 @@ function Login() {
     clearMessages();
     if (hasErrors) return;
     setPending(true);
+    if (mode === "signin" && signingInWithUsername) {
+      try {
+        const result = await signInWithUsername({ data: { username: email, password } });
+        if (result.status === "ok") {
+          const { error } = await supabase.auth.setSession({
+            access_token: result.accessToken,
+            refresh_token: result.refreshToken,
+          });
+          setPending(false);
+          if (error) return setAuthError(error.message);
+          rememberEmail(normaliseUsername(email));
+          navigate({ to: returnTo });
+          return;
+        }
+        setPending(false);
+        setProblem(result.status === "unconfirmed" ? "unconfirmed" : result.status);
+      } catch {
+        setPending(false);
+        setAuthError("We couldn't sign you in just now. Please try again.");
+      }
+      return;
+    }
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (!error) {
         setPending(false);
         rememberEmail(email);
-        navigate({ to: "/", search: {} as never });
+        navigate({ to: returnTo });
         return;
       }
       if (isAuthError(error, "email_not_confirmed", "Email not confirmed")) {
@@ -196,10 +319,21 @@ function Login() {
       setPending(false);
       setAuthError(error.message);
     } else {
+      const { data: available } = await supabase.rpc("username_available", {
+        p_username: normaliseUsername(username),
+      });
+      if (available === false) {
+        setPending(false);
+        setUsernameState("taken");
+        return;
+      }
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name }, emailRedirectTo: window.location.origin },
+        options: {
+          data: { full_name: name.trim(), username: normaliseUsername(username) },
+          emailRedirectTo: window.location.origin + returnTo,
+        },
       });
       setPending(false);
       if (error) {
@@ -211,7 +345,7 @@ function Login() {
       // With email confirmation on, Supabase hides existing accounts by returning a user with no identities.
       if (data.user && data.user.identities?.length === 0) return setProblem("already-registered");
       rememberEmail(email);
-      if (data.session) navigate({ to: "/", search: {} as never });
+      if (data.session) navigate({ to: returnTo });
       else setDone(true);
     }
   };
@@ -282,10 +416,10 @@ function Login() {
                   : `Signed in as ${email}.`}
               </p>
               <Link
-                to="/"
+                to={returnTo}
                 className="mt-6 rounded-full bg-ink px-6 py-3 text-sm font-medium text-cream transition hover:bg-ink/90"
               >
-                Continue to the shop
+                {returnTo === "/" ? "Continue to the shop" : "Continue"}
               </Link>
             </div>
           ) : (
@@ -335,6 +469,44 @@ function Login() {
               <form onSubmit={onSubmit} noValidate className="space-y-4">
                 {mode === "signup" && (
                   <div>
+                    <label htmlFor="username" className="text-sm font-medium">
+                      Username
+                    </label>
+                    <input
+                      id="username"
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
+                      placeholder="ananya.rao"
+                      maxLength={20}
+                      aria-invalid={submitted && !!errors.username}
+                      aria-describedby="username-hint"
+                      className={fieldClass(errors.username)}
+                    />
+                    <p id="username-hint" className="mt-1 text-xs">
+                      {submitted && errors.username ? (
+                        <span className="text-terra">{errors.username}</span>
+                      ) : usernameState === "taken" ? (
+                        <span className="text-terra">That username is taken</span>
+                      ) : usernameState === "available" ? (
+                        <span className="text-sage">
+                          ✓ {normaliseUsername(username)} is available
+                        </span>
+                      ) : usernameState === "checking" ? (
+                        <span className="text-ink/45">Checking…</span>
+                      ) : (
+                        <span className="text-ink/45">
+                          You can sign in with this or your email.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {mode === "signup" && (
+                  <div>
                     <label htmlFor="name" className="text-sm font-medium">
                       Full name
                     </label>
@@ -343,7 +515,7 @@ function Login() {
                       autoComplete="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Ada Fern"
+                      placeholder="Ananya Rao"
                       aria-invalid={submitted && !!errors.name}
                       className={fieldClass(errors.name)}
                     />
@@ -355,15 +527,19 @@ function Login() {
 
                 <div>
                   <label htmlFor="email" className="text-sm font-medium">
-                    Email
+                    {mode === "signin" ? "Email or username" : "Email"}
                   </label>
                   <input
                     id="email"
-                    type="email"
-                    autoComplete="email"
+                    type={mode === "signin" ? "text" : "email"}
+                    autoComplete={mode === "signin" ? "username" : "email"}
+                    autoCapitalize="none"
+                    spellCheck={false}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder={
+                      mode === "signin" ? "you@example.com or username" : "you@example.com"
+                    }
                     aria-invalid={submitted && !!errors.email}
                     className={fieldClass(errors.email)}
                   />
@@ -416,6 +592,7 @@ function Login() {
                   <ProblemCallout
                     problem={problem}
                     email={email}
+                    isUsername={!email.includes("@")}
                     onForgot={onForgot}
                     onRegister={goRegister}
                     onSignIn={goSignIn}
@@ -475,29 +652,37 @@ function GoogleG() {
   );
 }
 
-const PROBLEM_COPY: Record<Problem, { title: string; body: (email: string) => string }> = {
+const PROBLEM_COPY: Record<
+  Problem,
+  { title: (isUsername: boolean) => string; body: (id: string, isUsername: boolean) => string }
+> = {
   "wrong-password": {
-    title: "Forgot your email or password?",
-    body: (email) =>
-      `We found an account for ${email}, but that password is incorrect. Reset it, or sign in with a different email.`,
+    title: () => "Forgot your username or password?",
+    body: (id) =>
+      `We found an account for ${id}, but that password is incorrect. Reset it, or sign in with a different email or username.`,
   },
   "no-account": {
-    title: "We don't recognise this email",
-    body: (email) => `There's no Roots account for ${email} yet. Register to get started.`,
+    title: (isUsername) =>
+      isUsername ? "We don't recognise this username" : "We don't recognise this email",
+    body: (id) => `There's no Roots account for ${id} yet. Register to get started.`,
   },
   unconfirmed: {
-    title: "Confirm your email first",
-    body: (email) => `Click the link we sent to ${email} to finish registering, then sign in.`,
+    title: () => "Confirm your email first",
+    body: (id, isUsername) =>
+      isUsername
+        ? `Click the link we sent to the email on ${id}'s account to finish registering, then sign in.`
+        : `Click the link we sent to ${id} to finish registering, then sign in.`,
   },
   "already-registered": {
-    title: "You already have an account",
-    body: (email) => `${email} is already registered. Sign in instead.`,
+    title: () => "You already have an account",
+    body: (id) => `${id} is already registered. Sign in instead.`,
   },
 };
 
 function ProblemCallout({
   problem,
   email,
+  isUsername,
   onForgot,
   onRegister,
   onSignIn,
@@ -506,6 +691,7 @@ function ProblemCallout({
 }: {
   problem: Problem;
   email: string;
+  isUsername: boolean;
   onForgot: () => void;
   onRegister: () => void;
   onSignIn: () => void;
@@ -519,8 +705,8 @@ function ProblemCallout({
 
   return (
     <div role="alert" className="rounded-2xl border border-terra/30 bg-terra/5 p-3.5">
-      <p className="text-sm font-medium text-terra">{copy.title}</p>
-      <p className="mt-0.5 text-xs leading-relaxed text-ink/65">{copy.body(email)}</p>
+      <p className="text-sm font-medium text-terra">{copy.title(isUsername)}</p>
+      <p className="mt-0.5 text-xs leading-relaxed text-ink/65">{copy.body(email, isUsername)}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {problem === "wrong-password" && (
           <>
@@ -528,17 +714,17 @@ function ProblemCallout({
               Email me a reset link
             </button>
             <button type="button" onClick={onTryAnother} className={secondary}>
-              Use a different email
+              {isUsername ? "Try another username or email" : "Use a different email"}
             </button>
           </>
         )}
         {problem === "no-account" && (
           <>
             <button type="button" onClick={onRegister} className={primary}>
-              Register with this email
+              {isUsername ? "Create an account" : "Register with this email"}
             </button>
             <button type="button" onClick={onTryAnother} className={secondary}>
-              Use a different email
+              {isUsername ? "Try another username or email" : "Use a different email"}
             </button>
           </>
         )}

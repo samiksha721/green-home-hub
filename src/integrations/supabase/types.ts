@@ -14,42 +14,185 @@ export type Database = {
   }
   public: {
     Tables: {
+      order_items: {
+        Row: {
+          id: string
+          name: string
+          order_id: string
+          plant_id: string | null
+          quantity: number
+          unit_price: number
+          vendor_id: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          order_id: string
+          plant_id?: string | null
+          quantity: number
+          unit_price: number
+          vendor_id?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          order_id?: string
+          plant_id?: string | null
+          quantity?: number
+          unit_price?: number
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          address_line: string
+          contact_name: string
+          created_at: string
+          delivery_fee: number
+          delivery_notes: string
+          id: string
+          locality: string
+          order_number: string
+          payment_method: string
+          phone: string
+          pincode: string
+          status: string
+          subtotal: number
+          total: number
+          user_id: string
+        }
+        Insert: {
+          address_line: string
+          contact_name: string
+          created_at?: string
+          delivery_fee?: number
+          delivery_notes?: string
+          id?: string
+          locality: string
+          order_number?: string
+          payment_method: string
+          phone: string
+          pincode: string
+          status?: string
+          subtotal?: number
+          total?: number
+          user_id: string
+        }
+        Update: {
+          address_line?: string
+          contact_name?: string
+          created_at?: string
+          delivery_fee?: number
+          delivery_notes?: string
+          id?: string
+          locality?: string
+          order_number?: string
+          payment_method?: string
+          phone?: string
+          pincode?: string
+          status?: string
+          subtotal?: number
+          total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       plants: {
         Row: {
           active: boolean
           category: string
           created_at: string
+          description: string
           id: string
           image_url: string | null
           name: string
           price: number
+          review_note: string
+          status: string
           stock: number
           tag: string
           tagline: string
+          vendor_id: string | null
+          vendor_name: string | null
         }
         Insert: {
           active?: boolean
           category: string
           created_at?: string
+          description?: string
           id?: string
           image_url?: string | null
           name: string
           price: number
+          review_note?: string
+          status?: string
           stock?: number
           tag?: string
           tagline?: string
+          vendor_id?: string | null
+          vendor_name?: string | null
         }
         Update: {
           active?: boolean
           category?: string
           created_at?: string
+          description?: string
           id?: string
           image_url?: string | null
           name?: string
           price?: number
+          review_note?: string
+          status?: string
           stock?: number
           tag?: string
           tagline?: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plants_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string
+          id: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -71,12 +214,72 @@ export type Database = {
         }
         Relationships: []
       }
+      vendors: {
+        Row: {
+          about: string
+          address: string
+          business_name: string
+          contact_name: string
+          created_at: string
+          email: string
+          gstin: string | null
+          locality: string
+          phone: string
+          review_note: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          about?: string
+          address?: string
+          business_name: string
+          contact_name: string
+          created_at?: string
+          email: string
+          gstin?: string | null
+          locality: string
+          phone: string
+          review_note?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          about?: string
+          address?: string
+          business_name?: string
+          contact_name?: string
+          created_at?: string
+          email?: string
+          gstin?: string | null
+          locality?: string
+          phone?: string
+          review_note?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       email_registered: { Args: { p_email: string }; Returns: boolean }
+      place_order: {
+        Args: {
+          p_address: string
+          p_contact_name: string
+          p_items: Json
+          p_locality: string
+          p_notes: string
+          p_payment: string
+          p_phone: string
+          p_pincode: string
+        }
+        Returns: Json
+      }
+      username_available: { Args: { p_username: string }; Returns: boolean }
+      vendor_is_approved: { Args: { p_vendor: string }; Returns: boolean }
       has_any_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {

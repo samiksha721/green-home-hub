@@ -4,6 +4,8 @@ import type { User } from "@supabase/supabase-js";
 import { Upload, Download, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
+import { VendorReview } from "@/components/admin/VendorReview";
+import { formatINR } from "@/lib/format";
 import {
   adminStatus,
   claimShopOwnership,
@@ -107,6 +109,7 @@ function Admin() {
     const { data } = await supabase
       .from("plants")
       .select("id, name, category, price, stock")
+      .is("vendor_id", null)
       .order("name");
     setInventory(
       (data ?? []).map((r) => ({
@@ -139,14 +142,14 @@ function Admin() {
   const downloadTemplate = () => {
     const csv = [
       "name,tagline,price,tag,category,stock,image_url",
-      'Snake Plant,"Upright, architectural",55,Low light,Foliage,10,https://…',
-      'Peace Lily,"Flowering classic",48,Shade loving,Flowering,7,',
-      'Olive Tree,"Mediterranean patio tree",180,Drought hardy,Terrace,3,https://…',
+      'Snake Plant,"Upright, architectural",449,Low light,Foliage,10,https://…',
+      'Peace Lily,"Flowering classic",599,Low light,Flowering,7,',
+      'Bougainvillea,"Sun-loving terrace colour",399,Full sun,Terrace,12,https://…',
     ].join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "cormorant-plant-import-template.csv";
+    a.download = "roots-plant-import-template.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -249,6 +252,7 @@ function Admin() {
             </p>
             <Link
               to="/login"
+              search={{ redirect: "/admin" }}
               className="mt-5 inline-block rounded-full bg-ink px-6 py-3 text-sm font-medium text-cream transition hover:bg-ink/90"
             >
               Sign in
@@ -299,7 +303,8 @@ function Admin() {
                 <code className="font-mono text-xs">
                   name, tagline, price, tag, category, stock, image_url
                 </code>
-                . Re-importing a name updates its price and stock instead of duplicating it.
+                . Prices in rupees. Re-importing a name updates its price and stock instead of
+                duplicating it.
               </p>
 
               <label className="mt-5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink/20 bg-sagelight/40 px-6 py-8 text-center transition hover:border-ink/40">
@@ -337,9 +342,8 @@ function Admin() {
                             {r.category || <span className="text-terra">missing</span>}
                           </td>
                           <td className="px-4 py-2">
-                            $
                             {Number.isFinite(r.price) ? (
-                              r.price
+                              formatINR(r.price)
                             ) : (
                               <span className="text-terra">?</span>
                             )}
@@ -396,7 +400,7 @@ function Admin() {
                       <p className="text-sm text-ink/55">{p.category}</p>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <span className="font-display font-semibold">${p.price}</span>
+                      <span className="font-display font-semibold">{formatINR(p.price)}</span>
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                           p.stock > 0 ? "bg-sage/10 text-sage" : "bg-terra/10 text-terra"
@@ -409,6 +413,8 @@ function Admin() {
                 ))}
               </div>
             </section>
+
+            <VendorReview />
           </div>
         )}
       </main>
