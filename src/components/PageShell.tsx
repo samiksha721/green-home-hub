@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { openSignIn } from "@/components/AuthSheet";
 
 /** Background, header and footer shared by the inner pages (checkout, orders, vendor). */
 export function PageShell({
@@ -36,12 +37,22 @@ export function SignInPrompt({
     <div className="mx-auto max-w-md rounded-3xl border border-ink/5 bg-surface/70 p-8 text-center shadow-xl ring-1 ring-ink/5 backdrop-blur-2xl">
       <h1 className="font-display text-2xl font-semibold tracking-tight">{title}</h1>
       <p className="mt-2 text-sm leading-relaxed text-ink/60">{body}</p>
-      <a
-        href={`/login?redirect=${encodeURIComponent(redirect)}`}
+      <button
+        type="button"
+        onClick={() => openSignIn()}
         className="mt-6 inline-block rounded-full bg-ink px-6 py-3 text-sm font-medium text-cream transition hover:bg-ink/90"
       >
-        Sign in or create an account
-      </a>
+        Log in or sign up
+      </button>
+      <p className="mt-4 text-xs text-ink/50">
+        Prefer a password?{" "}
+        <a
+          href={`/login?redirect=${encodeURIComponent(redirect)}`}
+          className="font-medium text-terra hover:text-terra/80"
+        >
+          Use password sign-in
+        </a>
+      </p>
     </div>
   );
 }

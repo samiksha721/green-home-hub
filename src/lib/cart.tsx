@@ -16,6 +16,7 @@ export interface CartLine {
   price: number;
   image: string;
   vendorName: string | null;
+  serviceAreas: string[] | null;
   qty: number;
 }
 
@@ -39,7 +40,10 @@ function readStored(): CartLine[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
     return Array.isArray(parsed)
-      ? (parsed as CartLine[]).filter((l) => l && l.id && l.qty > 0)
+      ? (parsed as CartLine[])
+          .filter((l) => l && l.id && l.qty > 0)
+          // Bags saved before delivery areas existed: treat as deliverable everywhere until refreshed.
+          .map((l) => ({ ...l, serviceAreas: l.serviceAreas ?? null }))
       : [];
   } catch {
     return [];
@@ -71,7 +75,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existing = current.find((l) => l.id === plant.id);
       if (existing) {
         return current.map((l) =>
-          l.id === plant.id ? { ...l, qty: Math.min(MAX_QTY, l.qty + 1), price: plant.price } : l,
+          l.id === plant.id
+            ? {
+                ...l,
+                qty: Math.min(MAX_QTY, l.qty + 1),
+                price: plant.price,
+                serviceAreas: plant.serviceAreas,
+              }
+            : l,
         );
       }
       return [
@@ -83,6 +94,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           price: plant.price,
           image: plantImage(plant),
           vendorName: plant.vendorName,
+          serviceAreas: plant.serviceAreas,
           qty: 1,
         },
       ];

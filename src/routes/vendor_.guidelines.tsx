@@ -158,8 +158,10 @@ function Guidelines() {
               </li>
               <li>
                 <strong>Register your business</strong> on the vendor dashboard: business name,
-                contact person, mobile number, area in {CITY}, pickup address, and GSTIN if you're
-                GST-registered.
+                contact person, mobile number, area in {CITY}, pickup address, GSTIN if you're
+                GST-registered, and the <strong>areas you deliver to</strong>. Shoppers choose their
+                area first, and only see plants delivered there — so pick every area you can
+                reliably reach.
               </li>
               <li>
                 <strong>Add your plants</strong> — one listing per plant, each with a photo, name,

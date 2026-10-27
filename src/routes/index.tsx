@@ -1,16 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
-import { plantsQuery, plantImage, type PlantCategory } from "@/lib/plants";
+import { deliversTo, plantsQuery, plantImage, type PlantCategory } from "@/lib/plants";
 import { PROS, prosServing, type Pro } from "@/lib/catalog";
-import { CITY, useLocality } from "@/lib/localities";
+import { CITY, openLocationSheet, storedLocality, useLocality } from "@/lib/localities";
 import { useCart } from "@/lib/cart";
 import { formatINR } from "@/lib/format";
 import { BookingDialog } from "@/components/BookingDialog";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ProAvatar } from "@/components/ProAvatar";
+import { locationSkipped } from "@/components/LocationSheet";
 
 export const Route = createFileRoute("/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(plantsQuery),
@@ -43,12 +44,22 @@ const FILTERS: ("All" | PlantCategory)[] = ["All", "Foliage", "Flowering", "Terr
 function Index() {
   const [bookingPro, setBookingPro] = useState<Pro | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
-  const [locality, setLocality] = useLocality();
+  const [locality] = useLocality();
+  const [allPros, setAllPros] = useState(false);
   const { data: plants } = useSuspenseQuery(plantsQuery);
   const cart = useCart();
 
-  const visiblePlants = filter === "All" ? plants : plants.filter((p) => p.category === filter);
-  const pros = prosServing(locality);
+  // First visit: ask where to deliver (once per visit; browsing never waits on it).
+  useEffect(() => {
+    if (storedLocality() || locationSkipped()) return;
+    const t = setTimeout(openLocationSheet, 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  const inCategory = filter === "All" ? plants : plants.filter((p) => p.category === filter);
+  const visiblePlants = inCategory.filter((p) => deliversTo(p, locality));
+  const elsewhere = inCategory.filter((p) => !deliversTo(p, locality));
+  const pros = allPros ? PROS : prosServing(locality);
 
   return (
     <div className="min-h-screen bg-cream font-body text-ink antialiased selection:bg-sage/20">
@@ -103,7 +114,27 @@ function Index() {
                   In season this week
                 </h2>
                 <p className="mt-1 text-sm text-ink/55">
-                  Delivered anywhere in {CITY} · free over {formatINR(999)}
+                  {locality ? (
+                    <>
+                      Available in {locality} · free delivery over {formatINR(999)} ·{" "}
+                      <button
+                        onClick={openLocationSheet}
+                        className="font-medium text-terra hover:text-terra/80"
+                      >
+                        Change area
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={openLocationSheet}
+                        className="font-medium text-terra hover:text-terra/80"
+                      >
+                        Choose your area
+                      </button>{" "}
+                      to see what's delivered to you · free delivery over {formatINR(999)}
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -123,7 +154,9 @@ function Index() {
 
             {visiblePlants.length === 0 ? (
               <p className="py-12 text-center text-sm text-ink/55">
-                No {filter.toLowerCase()} plants in stock right now.
+                {locality
+                  ? `No ${filter === "All" ? "" : filter.toLowerCase() + " "}plants are delivered to ${locality} yet.`
+                  : `No ${filter.toLowerCase()} plants in stock right now.`}
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
@@ -189,6 +222,26 @@ function Index() {
                 })}
               </div>
             )}
+
+            {locality && elsewhere.length > 0 && (
+              <div className="mt-8 rounded-2xl border border-dashed border-ink/15 p-4">
+                <p className="text-sm font-medium">Not delivered to {locality} yet</p>
+                <p className="mt-0.5 text-xs text-ink/55">
+                  These come from nurseries in other parts of {CITY}:
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {elsewhere.map((p) => (
+                    <li
+                      key={p.id}
+                      className="rounded-full bg-surface/70 px-2.5 py-1 text-xs text-ink/60 ring-1 ring-ink/5"
+                    >
+                      {p.name}
+                      {p.serviceAreas?.length ? ` · ${p.serviceAreas.join(", ")}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
 
           {/* Professionals */}
@@ -202,17 +255,17 @@ function Index() {
                   People who keep it alive
                 </h2>
                 <p className="mt-1 text-sm text-ink/55">
-                  {locality
+                  {locality && !allPros
                     ? `${pros.length} of ${PROS.length} experts travel to ${locality}`
-                    : `Vetted, insured experts across ${CITY} — choose your area to see who comes to you`}
+                    : `Vetted, insured experts across ${CITY}${locality ? "" : " — choose your area to see who comes to you"}`}
                 </p>
               </div>
               {locality && (
                 <button
-                  onClick={() => setLocality(null)}
+                  onClick={() => setAllPros((v) => !v)}
                   className="rounded-full px-3 py-1 text-xs font-medium text-ink/55 transition hover:text-ink"
                 >
-                  Show all areas
+                  {allPros ? `Only experts for ${locality}` : "Show all areas"}
                 </button>
               )}
             </div>
@@ -220,11 +273,9 @@ function Index() {
             {pros.length === 0 ? (
               <div className="rounded-2xl border border-ink/5 bg-surface/55 p-8 text-center">
                 <p className="font-display text-lg font-semibold">No experts in {locality} yet</p>
-                <p className="mt-1 text-sm text-ink/55">
-                  We're adding new areas every month. See everyone across {CITY}:
-                </p>
+                <p className="mt-1 text-sm text-ink/55">See everyone across {CITY}:</p>
                 <button
-                  onClick={() => setLocality(null)}
+                  onClick={() => setAllPros(true)}
                   className="mt-4 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-cream transition hover:bg-ink/90"
                 >
                   Show all experts

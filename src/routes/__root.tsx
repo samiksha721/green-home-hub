@@ -14,6 +14,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
 import { CartDrawer } from "../components/CartDrawer";
+import { LocationSheet } from "../components/LocationSheet";
+import { AuthSheet } from "../components/AuthSheet";
 import { themeInitScript } from "../components/ThemeToggle";
 
 function NotFoundComponent() {
@@ -134,6 +136,8 @@ function RootComponent() {
       <CartProvider>
         <Outlet />
         <CartDrawer />
+        <LocationSheet />
+        <AuthSheet />
       </CartProvider>
     </QueryClientProvider>
   );

@@ -7,7 +7,7 @@ export const listPlants = createServerFn({ method: "GET" }).handler(async (): Pr
   const supabasePublic = createPublishableClient();
   const { data, error } = await supabasePublic
     .from("plants")
-    .select("id, name, tagline, price, tag, category, stock, image_url, description, vendor_name")
+    .select("id, name, tagline, price, tag, category, stock, image_url, description, vendor_name, service_areas")
     .eq("active", true)
     .eq("status", "approved")
     .order("name");
@@ -23,6 +23,7 @@ export const listPlants = createServerFn({ method: "GET" }).handler(async (): Pr
     image: row.image_url,
     description: row.description ?? "",
     vendorName: row.vendor_name,
+    serviceAreas: row.service_areas,
   }));
 });
 

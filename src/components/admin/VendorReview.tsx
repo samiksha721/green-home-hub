@@ -122,6 +122,7 @@ export function VendorReview() {
                 {v.address && ` · ${v.address}`}
                 {v.gstin && ` · GSTIN ${v.gstin}`}
               </p>
+              <p className="text-sm text-ink/55">Delivers to: {v.service_areas.join(", ")}</p>
               {v.about && <p className="mt-1 text-sm text-ink/60">{v.about}</p>}
               {decisionButtons("vendor", v.user_id)}
             </li>

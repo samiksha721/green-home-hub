@@ -6,6 +6,7 @@ import { useCart } from "@/lib/cart";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LocalityPicker } from "@/components/LocalityPicker";
+import { openSignIn } from "@/components/AuthSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,12 +79,13 @@ export function SiteHeader({ showBag = true }: { showBag?: boolean }) {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link
-              to="/login"
+            <button
+              type="button"
+              onClick={() => openSignIn()}
               className="rounded-full px-3 py-2 text-sm text-ink/65 transition hover:text-ink"
             >
               Sign in
-            </Link>
+            </button>
           )}
           {showBag && (
             <button
@@ -101,7 +103,7 @@ export function SiteHeader({ showBag = true }: { showBag?: boolean }) {
         </div>
       </nav>
       {/* Phones: area picker sits under the bar */}
-      <div className="mx-auto mt-2 flex max-w-7xl justify-end sm:hidden">
+      <div className="mx-auto mt-2 flex max-w-7xl sm:hidden">
         <LocalityPicker compact />
       </div>
     </div>

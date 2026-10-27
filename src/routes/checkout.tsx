@@ -1,21 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Check, Smartphone } from "lucide-react";
+import { Banknote, Check, MapPin, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fullName, useSessionUser } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
-import { plantsQuery } from "@/lib/plants";
+import { deliversTo, plantsQuery } from "@/lib/plants";
 import { deliveryFee, formatINR, FREE_DELIVERY_FROM } from "@/lib/format";
-import {
-  CITY,
-  LOCALITY_NAMES,
-  isLocality,
-  pincodeFor,
-  useLocality,
-  type Locality,
-} from "@/lib/localities";
-import { PageShell, SignInPrompt, inputClass } from "@/components/PageShell";
+import { CITY, openLocationSheet, pincodeFor, storedLocality, useLocality } from "@/lib/localities";
+import { PageShell, inputClass } from "@/components/PageShell";
+import { openSignIn } from "@/components/AuthSheet";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -56,12 +50,12 @@ function Checkout() {
   const cart = useCart();
   const queryClient = useQueryClient();
   const { data: plants } = useQuery(plantsQuery);
-  const [savedLocality, setSavedLocality] = useLocality();
+  // The delivery area is the shopper's chosen area; "Change" reopens the location sheet.
+  const [area] = useLocality();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [area, setArea] = useState<Locality | "">("");
   const [pincode, setPincode] = useState("");
   const [notes, setNotes] = useState("");
   const [payment, setPayment] = useState<Payment>("cod");
@@ -76,13 +70,23 @@ function Checkout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Fill the PIN for the area unless the shopper typed their own.
+  const [autoPin, setAutoPin] = useState("");
   useEffect(() => {
-    if (savedLocality && !area) {
-      setArea(savedLocality);
-      setPincode((p) => p || pincodeFor(savedLocality));
-    }
+    if (!area) return;
+    setPincode((p) => (!p || p === autoPin ? pincodeFor(area) : p));
+    setAutoPin(pincodeFor(area));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedLocality]);
+  }, [area]);
+
+  // Quick-commerce flow: ask for the area, then sign-in, right here on the checkout page.
+  useEffect(() => {
+    if (!ready) return;
+    if (!storedLocality()) openLocationSheet();
+    else if (!user) openSignIn("to place your order. Your bag is saved.");
+    // Only when the page first knows who's here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   // Reconcile the bag with live prices and stock.
   const lines = useMemo(
@@ -94,13 +98,16 @@ function Checkout() {
           price: live?.price ?? line.price,
           available: plants ? Boolean(live) : true,
           stock: live?.stock ?? Infinity,
+          deliverable: deliversTo(live ?? line, area),
         };
       }),
-    [cart.lines, plants],
+    [cart.lines, plants, area],
   );
-  const unavailable = lines.filter((l) => !l.available);
+  const unavailable = lines.filter((l) => !l.available || !l.deliverable);
   const overStock = lines.filter((l) => l.available && l.qty > l.stock);
-  const subtotal = lines.filter((l) => l.available).reduce((s, l) => s + l.price * l.qty, 0);
+  const subtotal = lines
+    .filter((l) => l.available && l.deliverable)
+    .reduce((s, l) => s + l.price * l.qty, 0);
   const fee = deliveryFee(subtotal);
 
   const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
@@ -113,17 +120,11 @@ function Checkout() {
   };
   const hasErrors = Object.values(errors).some(Boolean);
 
-  const chooseArea = (value: string) => {
-    if (!isLocality(value)) return setArea("");
-    // Fill the PIN for the area unless the shopper typed their own.
-    setPincode((p) => (!p || p === pincodeFor(area || null) ? pincodeFor(value) : p));
-    setArea(value);
-  };
-
   const placeOrder = async (e: FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
     setError("");
+    if (!user) return openSignIn("to place your order. Your bag is saved.");
+    setSubmitted(true);
     if (hasErrors || unavailable.length || overStock.length || !lines.length) return;
     setPending(true);
     const { data, error: rpcError } = await supabase.rpc("place_order", {
@@ -131,7 +132,7 @@ function Checkout() {
       p_contact_name: name.trim(),
       p_phone: digits,
       p_address: address.trim(),
-      p_locality: area,
+      p_locality: area ?? "",
       p_pincode: pincode,
       p_notes: notes.trim(),
       p_payment: payment,
@@ -143,14 +144,13 @@ function Checkout() {
       return setError(rpcError.message);
     }
     const order = data as { order_number: string; total: number };
-    if (area) setSavedLocality(area);
     cart.clear();
     void queryClient.invalidateQueries({ queryKey: plantsQuery.queryKey });
     setPlaced({
       orderNumber: order.order_number,
       total: Number(order.total),
       payment,
-      locality: area,
+      locality: area ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -192,18 +192,6 @@ function Checkout() {
             </Link>
           </div>
         </div>
-      </PageShell>
-    );
-  }
-
-  if (ready && !user) {
-    return (
-      <PageShell>
-        <SignInPrompt
-          title="Sign in to check out"
-          body="Your bag is saved. Sign in with Google, your email or your username — you'll come straight back here."
-          redirect="/checkout"
-        />
       </PageShell>
     );
   }
@@ -284,23 +272,24 @@ function Checkout() {
                 />
                 {fieldError("address")}
               </label>
-              <label className="block">
+              <div className="block">
                 <span className="text-sm font-medium">Area</span>
-                <select
-                  value={area}
-                  onChange={(e) => chooseArea(e.target.value)}
+                <button
+                  type="button"
+                  onClick={openLocationSheet}
                   aria-invalid={submitted && !!errors.area}
-                  className={inputClass}
+                  className={`${inputClass} flex items-center justify-between gap-2 text-left`}
                 >
-                  <option value="">Choose your area…</option>
-                  {LOCALITY_NAMES.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="size-4 text-terra" aria-hidden />
+                    {area ?? <span className="text-ink/40">Choose your area</span>}
+                  </span>
+                  <span className="text-xs font-medium text-terra">
+                    {area ? "Change" : "Choose"}
+                  </span>
+                </button>
                 {fieldError("area")}
-              </label>
+              </div>
               <label className="block">
                 <span className="text-sm font-medium">PIN code</span>
                 <input
@@ -390,6 +379,11 @@ function Checkout() {
                   {!line.available && (
                     <p className="text-xs text-terra">No longer available — please remove it.</p>
                   )}
+                  {line.available && !line.deliverable && (
+                    <p className="text-xs text-terra">
+                      Not delivered to {area} — remove it or change your area.
+                    </p>
+                  )}
                   {line.available && line.qty > line.stock && (
                     <p className="text-xs text-terra">
                       Only {line.stock} left — please reduce the quantity.
@@ -451,10 +445,18 @@ function Checkout() {
           )}
           <button
             type="submit"
-            disabled={pending || !ready || unavailable.length > 0 || overStock.length > 0}
+            disabled={
+              pending ||
+              !ready ||
+              (Boolean(user) && (unavailable.length > 0 || overStock.length > 0))
+            }
             className="mt-5 w-full rounded-full bg-terra px-5 py-3.5 text-sm font-semibold text-cream transition hover:bg-terra/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {pending ? "Placing your order…" : `Place order · ${formatINR(subtotal + fee)}`}
+            {pending
+              ? "Placing your order…"
+              : user
+                ? `Place order · ${formatINR(subtotal + fee)}`
+                : "Sign in to place order"}
           </button>
         </aside>
       </form>

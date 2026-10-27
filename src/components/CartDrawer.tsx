@@ -2,10 +2,13 @@ import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { X, ShoppingBag } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { deliversTo } from "@/lib/plants";
+import { useLocality } from "@/lib/localities";
 import { DELIVERY_FEE, FREE_DELIVERY_FROM, deliveryFee, formatINR } from "@/lib/format";
 
 export function CartDrawer() {
   const { lines, count, subtotal, open, setOpen, updateQty } = useCart();
+  const [locality] = useLocality();
   const navigate = useNavigate();
   const fee = deliveryFee(subtotal);
 
@@ -78,6 +81,9 @@ export function CartDrawer() {
                     <p className="truncate text-sm text-ink/55">
                       {line.vendorName ? `by ${line.vendorName}` : line.tagline}
                     </p>
+                    {!deliversTo(line, locality) && (
+                      <p className="text-xs text-terra">Not delivered to {locality}</p>
+                    )}
                     <div className="mt-1.5 inline-flex items-center gap-3 rounded-full border border-ink/10 bg-surface/60 px-2 py-0.5">
                       <button
                         onClick={() => updateQty(line.id, -1)}

@@ -19,6 +19,16 @@ export interface Plant {
   description: string;
   /** Set for listings from marketplace vendors; null for Roots' own stock. */
   vendorName: string | null;
+  /** Areas this plant is delivered to; null means every launch area (Roots' own greenhouse). */
+  serviceAreas: string[] | null;
+}
+
+/** Whether a plant can be delivered to the shopper's area (any area counts until one is chosen). */
+export function deliversTo(
+  plant: { serviceAreas: string[] | null },
+  locality: string | null,
+): boolean {
+  return !locality || !plant.serviceAreas || plant.serviceAreas.includes(locality);
 }
 
 // Bundled photos for the founding plants; imported rows use their own image_url.

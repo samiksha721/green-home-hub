@@ -22,6 +22,13 @@
       "when": 1793007429912,
       "tag": "0002_roots_marketplace",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793104061282,
+      "tag": "0003_area_availability",
+      "breakpoints": true
     }
   ]
 }

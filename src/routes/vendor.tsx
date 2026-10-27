@@ -138,6 +138,9 @@ function VendorPage() {
           <p className="mt-1 text-sm text-ink/55">
             {vendor.locality}, {CITY} · {vendor.contact_name} · {vendor.phone}
           </p>
+          <p className="mt-1 text-sm text-ink/55">
+            Delivers to: {vendor.service_areas.join(", ") || vendor.locality}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
@@ -292,6 +295,9 @@ function VendorProfileForm({
   const [locality, setLocality] = useState<Locality | "">(
     existing && isLocality(existing.locality) ? existing.locality : "",
   );
+  const [serviceAreas, setServiceAreas] = useState<Locality[]>(
+    (existing?.service_areas ?? []).filter(isLocality),
+  );
   const [address, setAddress] = useState(existing?.address ?? "");
   const [gstin, setGstin] = useState(existing?.gstin ?? "");
   const [about, setAbout] = useState(existing?.about ?? "");
@@ -307,6 +313,7 @@ function VendorProfileForm({
     phone: /^[6-9]\d{9}$/.test(digits) ? "" : "Enter a 10-digit mobile number",
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "" : "Enter a valid email",
     locality: locality ? "" : `Choose your area in ${CITY}`,
+    serviceAreas: serviceAreas.length ? "" : "Choose at least one area you deliver to",
     address: address.trim().length < 8 ? "Enter the address where orders are picked up" : "",
     gstin:
       !gstin.trim() || GSTIN_RE.test(gstin.trim().toUpperCase())
@@ -331,6 +338,7 @@ function VendorProfileForm({
       phone: digits,
       email: email.trim(),
       locality: locality as string,
+      service_areas: serviceAreas,
       address: address.trim(),
       gstin: gstin.trim() ? gstin.trim().toUpperCase() : null,
       about: about.trim(),
@@ -416,7 +424,12 @@ function VendorProfileForm({
           <span className="text-sm font-medium">Area in {CITY}</span>
           <select
             value={locality}
-            onChange={(e) => setLocality(isLocality(e.target.value) ? e.target.value : "")}
+            onChange={(e) => {
+              const next = isLocality(e.target.value) ? e.target.value : "";
+              setLocality(next);
+              // Most nurseries deliver around their own area first.
+              if (next && serviceAreas.length === 0) setServiceAreas([next]);
+            }}
             aria-invalid={submitted && !!errors.locality}
             className={inputClass}
           >
@@ -429,6 +442,36 @@ function VendorProfileForm({
           </select>
           {err("locality")}
         </label>
+        <fieldset className="sm:col-span-2">
+          <legend className="text-sm font-medium">Areas you deliver to</legend>
+          <p className="mt-0.5 text-xs text-ink/50">
+            Shoppers only see your plants when they've chosen one of these areas.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {LOCALITY_NAMES.map((n) => {
+              const on = serviceAreas.includes(n);
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() =>
+                    setServiceAreas((s) => (on ? s.filter((x) => x !== n) : [...s, n]))
+                  }
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    on
+                      ? "bg-sage text-cream"
+                      : "border border-ink/10 bg-surface/60 text-ink/65 hover:border-ink/30"
+                  }`}
+                >
+                  {on ? "✓ " : ""}
+                  {n}
+                </button>
+              );
+            })}
+          </div>
+          {err("serviceAreas")}
+        </fieldset>
         <label className="block sm:col-span-2">
           <span className="text-sm font-medium">Pickup address</span>
           <textarea

@@ -130,6 +130,7 @@ export type Database = {
           tagline: string
           vendor_id: string | null
           vendor_name: string | null
+          service_areas: string[] | null
         }
         Insert: {
           active?: boolean
@@ -147,6 +148,7 @@ export type Database = {
           tagline?: string
           vendor_id?: string | null
           vendor_name?: string | null
+          service_areas?: string[] | null
         }
         Update: {
           active?: boolean
@@ -164,6 +166,7 @@ export type Database = {
           tagline?: string
           vendor_id?: string | null
           vendor_name?: string | null
+          service_areas?: string[] | null
         }
         Relationships: [
           {
@@ -228,6 +231,7 @@ export type Database = {
           review_note: string
           status: string
           user_id: string
+          service_areas: string[]
         }
         Insert: {
           about?: string
@@ -242,6 +246,7 @@ export type Database = {
           review_note?: string
           status?: string
           user_id: string
+          service_areas?: string[]
         }
         Update: {
           about?: string
@@ -256,6 +261,7 @@ export type Database = {
           review_note?: string
           status?: string
           user_id?: string
+          service_areas?: string[]
         }
         Relationships: []
       }
