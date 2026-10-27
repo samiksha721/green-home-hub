@@ -1,35 +1,44 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { X, ShoppingBag } from "lucide-react";
-import { plantImage, type Plant } from "@/lib/plants";
+import { useCart } from "@/lib/cart";
+import { DELIVERY_FEE, FREE_DELIVERY_FROM, deliveryFee, formatINR } from "@/lib/format";
 
-interface CartDrawerProps {
-  open: boolean;
-  items: { plant: Plant; qty: number }[];
-  onClose: () => void;
-  onUpdateQty: (id: string, delta: number) => void;
-  onCheckout: () => void;
-}
+export function CartDrawer() {
+  const { lines, count, subtotal, open, setOpen, updateQty } = useCart();
+  const navigate = useNavigate();
+  const fee = deliveryFee(subtotal);
 
-export function CartDrawer({ open, items, onClose, onUpdateQty, onCheckout }: CartDrawerProps) {
-  const subtotal = items.reduce((sum, i) => sum + i.plant.price * i.qty, 0);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, setOpen]);
+
+  const checkout = () => {
+    setOpen(false);
+    navigate({ to: "/checkout" });
+  };
 
   return (
     <>
       <div
-        className={`fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm dark:bg-black/60 transition-opacity duration-300 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
-        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm transition-opacity duration-300 dark:bg-black/60 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        onClick={() => setOpen(false)}
         aria-hidden
       />
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-ink/10 bg-cream/90 shadow-2xl backdrop-blur-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-ink/10 bg-cream/95 shadow-2xl backdrop-blur-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}
         aria-label="Shopping bag"
+        aria-hidden={!open}
       >
         <div className="flex items-center justify-between border-b border-ink/10 px-6 py-5">
           <h2 className="font-display text-xl font-semibold tracking-tight">
-            Your bag {items.length > 0 && `(${items.reduce((n, i) => n + i.qty, 0)})`}
+            Your bag {count > 0 && `(${count})`}
           </h2>
           <button
-            onClick={onClose}
+            onClick={() => setOpen(false)}
             className="grid size-9 place-items-center rounded-full border border-ink/10 bg-surface/60 transition hover:border-ink/30"
             aria-label="Close bag"
           >
@@ -38,7 +47,7 @@ export function CartDrawer({ open, items, onClose, onUpdateQty, onCheckout }: Ca
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          {items.length === 0 ? (
+          {lines.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <ShoppingBag className="size-10 text-ink/25" />
               <p className="font-display text-lg font-medium">Your bag is empty</p>
@@ -48,68 +57,82 @@ export function CartDrawer({ open, items, onClose, onUpdateQty, onCheckout }: Ca
             </div>
           ) : (
             <ul className="space-y-5">
-              {items.map(({ plant, qty }) => (
-                <li key={plant.id} className="flex items-center gap-4">
-                  {plantImage(plant) ? (
+              {lines.map((line) => (
+                <li key={line.id} className="flex items-center gap-4">
+                  {line.image ? (
                     <img
-                      src={plantImage(plant)}
-                      alt={plant.name}
+                      src={line.image}
+                      alt={line.name}
                       loading="lazy"
-                      width={1024}
-                      height={1024}
                       className="size-16 shrink-0 rounded-xl border border-ink/5 object-cover"
                     />
                   ) : (
                     <div className="grid size-16 shrink-0 place-items-center rounded-xl border border-ink/5 bg-sagelight font-display text-xl font-semibold text-sage/60">
-                      {plant.name.charAt(0)}
+                      {line.name.charAt(0)}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-base font-semibold leading-tight">{plant.name}</p>
-                    <p className="text-sm text-ink/55">{plant.tagline}</p>
+                    <p className="truncate font-display text-base font-semibold leading-tight">
+                      {line.name}
+                    </p>
+                    <p className="truncate text-sm text-ink/55">
+                      {line.vendorName ? `by ${line.vendorName}` : line.tagline}
+                    </p>
                     <div className="mt-1.5 inline-flex items-center gap-3 rounded-full border border-ink/10 bg-surface/60 px-2 py-0.5">
                       <button
-                        onClick={() => onUpdateQty(plant.id, -1)}
+                        onClick={() => updateQty(line.id, -1)}
                         className="px-1 text-ink/60 transition hover:text-terra"
-                        aria-label={`Remove one ${plant.name}`}
+                        aria-label={`Remove one ${line.name}`}
                       >
                         −
                       </button>
-                      <span className="min-w-3 text-center text-sm font-medium">{qty}</span>
+                      <span className="min-w-3 text-center text-sm font-medium">{line.qty}</span>
                       <button
-                        onClick={() => onUpdateQty(plant.id, 1)}
+                        onClick={() => updateQty(line.id, 1)}
                         className="px-1 text-ink/60 transition hover:text-sage"
-                        aria-label={`Add one ${plant.name}`}
+                        aria-label={`Add one ${line.name}`}
                       >
                         +
                       </button>
                     </div>
                   </div>
-                  <span className="font-display text-base font-semibold">${plant.price * qty}</span>
+                  <span className="font-display text-base font-semibold">
+                    {formatINR(line.price * line.qty)}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
         </div>
 
-        {items.length > 0 && (
+        {lines.length > 0 && (
           <div className="border-t border-ink/10 px-6 py-5">
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between text-ink/55">
                 <span>Subtotal</span>
-                <span>${subtotal}</span>
+                <span>{formatINR(subtotal)}</span>
               </div>
               <div className="flex justify-between text-ink/55">
                 <span>Delivery</span>
-                <span className="text-sage">Free</span>
+                {fee === 0 ? (
+                  <span className="text-sage">Free</span>
+                ) : (
+                  <span>{formatINR(fee)}</span>
+                )}
               </div>
+              {fee > 0 && (
+                <p className="text-xs text-ink/45">
+                  Add {formatINR(FREE_DELIVERY_FROM - subtotal)} more for free delivery (otherwise{" "}
+                  {formatINR(DELIVERY_FEE)}).
+                </p>
+              )}
               <div className="flex justify-between pt-1 font-display text-lg font-semibold">
                 <span>Total</span>
-                <span>${subtotal}</span>
+                <span>{formatINR(subtotal + fee)}</span>
               </div>
             </div>
             <button
-              onClick={onCheckout}
+              onClick={checkout}
               className="mt-4 w-full rounded-full bg-terra px-5 py-3 text-sm font-medium text-cream transition hover:bg-terra/90"
             >
               Checkout

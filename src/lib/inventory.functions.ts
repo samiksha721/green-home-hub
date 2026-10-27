@@ -1,31 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Plant, PlantCategory } from "@/lib/plants";
-
-function createPublishableClient() {
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient<Database>(process.env["SUPABASE_URL"]!, key, {
-    auth: { persistSession: false },
-    // Opaque sb_ keys aren't JWTs; send only apikey, not the default Authorization bearer.
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
-}
+import { createPublishableClient } from "@/lib/supabase-public";
 
 export const listPlants = createServerFn({ method: "GET" }).handler(async (): Promise<Plant[]> => {
   const supabasePublic = createPublishableClient();
   const { data, error } = await supabasePublic
     .from("plants")
-    .select("id, name, tagline, price, tag, category, stock, image_url")
+    .select("id, name, tagline, price, tag, category, stock, image_url, description, vendor_name")
     .eq("active", true)
+    .eq("status", "approved")
     .order("name");
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({
@@ -37,6 +21,8 @@ export const listPlants = createServerFn({ method: "GET" }).handler(async (): Pr
     category: (row.category ?? "Foliage") as PlantCategory,
     stock: row.stock ?? 0,
     image: row.image_url,
+    description: row.description ?? "",
+    vendorName: row.vendor_name,
   }));
 });
 
@@ -102,21 +88,22 @@ export const importPlants = createServerFn({ method: "POST" })
         throw new Error(`Row ${i + 1} (${row.name}): stock must be a whole number`);
     }
 
-    const { error } = await supabase
-      .from("plants")
-      .upsert(
-        data.rows.map((row) => ({
-          name: row.name.trim(),
-          tagline: row.tagline ?? "",
-          price: row.price,
-          tag: row.tag ?? "",
-          category: row.category,
-          stock: Math.round(row.stock),
-          image_url: row.image_url?.trim() || null,
-          active: true,
-        })),
-        { onConflict: "name" },
-      );
+    const { error } = await supabase.from("plants").upsert(
+      data.rows.map((row) => ({
+        name: row.name.trim(),
+        tagline: row.tagline ?? "",
+        price: row.price,
+        tag: row.tag ?? "",
+        category: row.category,
+        stock: Math.round(row.stock),
+        image_url: row.image_url?.trim() || null,
+        active: true,
+        // Roots' own stock: unique by name among the shop's plants (vendor listings are separate).
+        vendor_id: null,
+        status: "approved",
+      })),
+      { onConflict: "name,vendor_id" },
+    );
     if (error) throw new Error(error.message);
     return { imported: data.rows.length };
   });

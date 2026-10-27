@@ -16,6 +16,9 @@ export interface Plant {
   category: PlantCategory;
   stock: number;
   image: string | null;
+  description: string;
+  /** Set for listings from marketplace vendors; null for Roots' own stock. */
+  vendorName: string | null;
 }
 
 // Bundled photos for the founding plants; imported rows use their own image_url.
